@@ -1,0 +1,89 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- INPUT METHOD -->
+	<arg name="JOY" default="false" />
+	<arg name="SNP" default="false" />
+	<arg name="HA" default="false"/>
+	<arg name="MS" default="false"/>
+	<arg name="XM" default="false"/>
+	<arg name="blending" default="false"/>
+	<arg name="PS3" default="false"/>
+	<arg name="JOINT" default="false"/>
+	<arg name="DISP" default="true" />
+	<arg name="DISP_PORT" default="/dev/ttyACM0" />
+	<arg name="CHIN_PORT" default="/dev/chin_switch_arduino" />
+
+	<!-- JOY NODES -->
+	<!-- PS3 Joystick -->
+	<group if="$(arg PS3)">
+		<node pkg="joy" type="joy_node" name="joy_node_ps3">
+			<param name="dev" value="/dev/ps3"/>
+			<remap from="joy" to="joy_ps3"/>
+		</node>
+	</group>
+
+	<!-- 3 Axis Joystick-->
+	<group if="$(arg JOY)">
+		<node pkg="joy" type="joy_node" name="joy_node_joystick" >
+			<!-- <param name="dev" value="/dev/3_axis_joystick"/> -->
+			<!--  TO DO:: FIX SIMLINK!!!!!! IMPORTANT -->
+			<param name="dev" value="/dev/input/js0"/>
+		</node>
+		<node pkg="jaco_teleop" output="screen" type="joystick_node.py" name="joystick_node">
+			<param name="joystick_paradigm" value="$(find jaco_teleop)/cfg/ModeSwitchParadigm.cfg"/>
+		</node>
+	</group>
+
+	<!-- Sip and PUff -->
+	<group if="$(arg SNP)">
+		<node pkg="joy" type="joy_node" name="joy_node_snp">
+			<param name="dev" value="/dev/sip_and_puff"/>
+			<remap from="joy" to="joy_sip_puff"/>
+		</node>
+		<node pkg="jaco_teleop" type="sip_and_puff_node.py" name="sip_and_puff_node" output="screen">
+			<param name="snp_paradigm" value="$(find jaco_teleop)/cfg/SipPuffModeSwitchParadigm.cfg"/>
+		</node>
+		<node pkg="rosserial_python" name="chin_button_arduino" type="serial_node.py" args="$(arg CHIN_PORT)" />
+	</group>
+
+	<!-- Mouse -->
+	<group if="$(arg MS)">
+		<include file="$(find joy_mouse)/launch/input_mouse.launch"/>
+		<rosparam command="load" file="$(find joy_mouse)/config/mouse.yaml" ns="mouse_dev" />
+		<node pkg="jaco_teleop" output="screen" type="mouse_node.py" name="mouse_node">
+			<param name="mouse_paradigm" value="$(find jaco_teleop)/cfg/MouseModeSwitchParadigm.cfg"/>
+		</node>
+	</group>
+
+  <!-- Headarray -->
+	<group if="$(arg HA)">
+		<node pkg="jaco_teleop" type="headarray_node.py" name="headarray_node" output="screen">
+			<param name="headarray_paradigm" value="$(find jaco_teleop)/cfg/HeadarrayModeSwitchParadigm.cfg"/>
+		</node>
+		<include file="$(find joy_mouse)/launch/input_mouse.launch">
+			<arg name="DEV" value="Dachris"/>
+	  </include>
+		<rosparam command="load" file="$(find joy_mouse)/config/headarray.yaml" ns="mouse_dev" />
+		<node pkg="rosserial_python" name="chin_button_arduino" type="serial_node.py" args="$(arg CHIN_PORT)" />
+	</group>
+
+
+
+	<!-- TELEOP NODE -->
+	<!-- Pure teleop (no blending) -->
+	<group unless="$(arg blending)">
+		<node pkg="jaco_teleop" output="screen" type="uservel_to_cartesianvel.py" name="uservel_to_cartesianvel"/>
+	</group>
+
+
+
+	<!-- Mode Display -->
+	<group if="$(arg DISP)">
+		<node pkg="rosserial_python" name="mode_display_arduino" type="serial_node.py" args="$(arg DISP_PORT)" />
+		<!-- FIX THIS: This loads too fast, before service is ready in teleop node -->
+		<node pkg="rosservice" type="rosservice" name="set_initial_mode" args="call --wait /teleop_node/set_mode 'mode_index: 0'"/>
+		<!-- <node pkg="rqt_reconfigure" type="rqt_reconfigure" name="mode_paradigm_control"/> Dont need this for R01 -->
+		<rosparam param="is_joint" subst_value="True">$(arg JOINT)</rosparam>
+	</group>
+</launch>

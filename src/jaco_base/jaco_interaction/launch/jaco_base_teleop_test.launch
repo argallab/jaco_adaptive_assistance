@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<launch>
+
+  #####################################
+  # Setup Arguments
+  #####################################
+  <arg name="force_control" default="true"/>
+  <arg name="homing" default="true"/>
+
+  #####################################
+  # Input Arguments
+  #####################################
+  <!-- <arg name="JOY" default="false" doc="Set to true if using 3-axis joystick to control arm."/>
+  <arg name="HA" default="false" doc="Set to true if using sip/puff to control arm."/>
+	<arg name="SNP" default="false" doc="Set to true if using sip/puff to control arm."/>
+	<arg name="MS" default="false" doc="Set to true if using mouse to control arm."/>
+	<arg name="blending" default="false" doc="Set to true if there is not control blending."/>
+  <arg name="ps3_control" default="true" doc="Set to false if don't want to use ps3 controller."/> -->
+
+  #####################################
+  # Robot identifier
+  #####################################
+  <arg name="kinova_robotType" default="j2s7s300"/>
+
+  #####################################
+  # hardware node
+  #####################################
+  <include file="$(find kinova_bringup)/launch/kinova_robot.launch">
+    <arg name="kinova_robotType" value="$(arg kinova_robotType)"/>
+  </include>
+
+
+  #####################################
+  # homing service
+  #####################################
+  <group if="$(arg homing)">
+    <node pkg="rosservice" type="rosservice" name="home_arm" args="call --wait /$(arg kinova_robotType)_driver/in/home_arm"/>
+  </group>
+
+  #####################################
+  # torque control service
+  #####################################
+  <group if="$(arg force_control)">
+    <node pkg="rosservice" type="rosservice" name="set_torque_params" args="call --wait /$(arg kinova_robotType)_driver/in/set_torque_control_parameters"/> <!-- I think this only needs to happen once -->
+    <node pkg="rosservice" type="rosservice" name="start_torque_mode" args="call --wait /$(arg kinova_robotType)_driver/in/start_force_control"/>
+  </group>
+
+  <group unless="$(arg force_control)">
+    <node pkg="rosservice" type="rosservice" name="start_torque_mode" args="call --wait /$(arg kinova_robotType)_driver/in/stop_force_control"/>
+  </group>
+
+  #####################################
+  # moveit stuff
+  #####################################
+  <arg name="path" value="(find $(arg kinova_robotType)_moveit_config)/launch/$(arg kinova_robotType)_demo.launch"/>
+  <arg name="dollar" value = "$" />
+  <include file="$(arg dollar)$(arg path)"/>
+  <!-- Notice: When this package is upgraded to kinetic or higher, use eval instead of using two args -->
+  <!-- <include file="$(eval find(arg('kinova_robotType')+'_moveit_config')+'/launch/'+arg('kinova_robotType')+'_demo.launch')"/> -->
+
+
+  #####################################
+  # basic environment rviz
+  #####################################
+
+
+  #####################################
+  # load teleop node (control mode "cartesian" or "joint")
+  #####################################
+  <!-- <include file="$(find jaco_teleop)/launch/jaco_teleop.launch">
+    <arg name="JOY" value="$(arg JOY)"/>
+    <arg name="HA" value="$(arg HA)"/>
+    <arg name="SNP" value="$(arg SNP)"/>
+    <arg name="MS" value="$(arg MS)"/>
+    <arg name="blending" value="$(arg blending)"/>
+    <arg name="ps3_control" value="$(arg ps3_control)"/>
+  </include> -->
+
+
+</launch>

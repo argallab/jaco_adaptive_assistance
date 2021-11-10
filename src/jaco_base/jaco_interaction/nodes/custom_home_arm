@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+import numpy as np
+import rospy
+
+from jaco_interaction import (
+	Navigation
+)
+
+from jaco_interaction.srv import (
+	CustomHome,
+	CustomHomeResponse
+)
+
+# from std_srvs.srv import Trigger, TriggerResponse
+from std_msgs.msg import Bool
+
+class CustomHomeArm(object):
+	"""
+	Publishes requests to home the arm to a custom home position (currently defined in the Navigation class)
+	Note: this implementation was designed to work only on the hardware.
+	"""
+	def __init__(self):
+		self.send_req = Bool()
+		self.pub = rospy.Publisher("/custom_home_arm", Bool, queue_size=10)
+		self.custom_home = rospy.Service("custom_home", CustomHome, self.custom_home_cb)
+
+	def custom_home_cb(self, req):
+		self.send_req = req.success
+		self.pub.publish(self.send_req)
+		rospy.loginfo("Requesting to home the arm....... %s", self.send_req)
+		nav = Navigation()
+		nav.custom_home_arm()
+		self.send_req = req.success = False
+		rospy.loginfo("Home service resetted.")
+		return CustomHomeResponse()
+
+if __name__ == '__main__':
+    rospy.init_node("custom_home_arm", anonymous=True)
+    custom_home = CustomHomeArm()
+    rospy.spin()

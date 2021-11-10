@@ -1,0 +1,6 @@
+<launch>
+
+    <node pkg="kinova_arm_moveit_demo" type="trajectory_simulator" name="trajectory_simulator"/>
+    <node name="data_record" pkg="rosbag" type="record" args="-o /home/jaco_ws/bags/ /planned_path" respawn="true"/>
+
+</launch>

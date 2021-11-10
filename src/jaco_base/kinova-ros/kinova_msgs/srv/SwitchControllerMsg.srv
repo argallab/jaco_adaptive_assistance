@@ -1,0 +1,5 @@
+#request variables
+
+string current_control_mode # 'trajectory' or 'velocity'
+---
+#response variables

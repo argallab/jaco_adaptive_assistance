@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+""" This is a simple tf2 listener that determines the robot's distance relative to the base.
+(Code adapted from https://github.com/m-elwin/me495_tf/blob/master/nodes/tracker)
+"""
+import rospy
+import tf2_ros
+
+if __name__ == "__main__":
+	rospy.init_node('jaco_tracker', anonymous=True)
+	
+	# Create a buffer to hold the transforms for a period of time
+	tfbuffer = tf2_ros.Buffer()
+	
+	# Create the listener, which will subscribe to /tf and listen for transforms, storing them in a buffer
+	listener = tf2_ros.TransformListener(tfbuffer)
+
+	rate = rospy.Rate(100)       #-- too high?
+	while not rospy.is_shutdown():
+		try:
+			# get the latest transform between base and EE
+			trans = tfbuffer.lookup_transform("j2s7s300_base_link", "j2s7s300_end_effector", rospy.Time())   #-- confirm base link name
+			# rospy.loginfo("Transform is: " + str(trans))
+			
+			#-- do something with trans
+			
+
+		except tf2_ros.LookupException as e:
+			# the frames don't exist yet
+			rospy.loginfo("Lookup exception: " + str(e))
+		except tf2_ros.ConnectivityException as e:
+			# the tf tree has a disconnection
+			rospy.loginfo("Connectivity exception: " + str(e))
+		except tf2_ros.ExtrapolationException as e:
+			# the times are two far apart to extrapolate
+			rospy.loginfo("Extrapolation exception: " + str(e))
+		finally:
+			rate.sleep()

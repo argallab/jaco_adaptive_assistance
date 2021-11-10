@@ -1,0 +1,41 @@
+<launch>
+
+  #####################################
+  # Robot identifier
+  #####################################
+  	<arg name="kinova_robotType" default="j2s7s300"/>
+	<arg name="is7dof" default="true"/>
+	<arg name="use_trajectory_controller" default="true"/>
+	<arg name="ps3" default="false"/>
+
+  #####################################
+  # MoveIt stuff
+  #####################################
+	<arg name="path" value="(find $(arg kinova_robotType)_moveit_config)/launch/$(arg kinova_robotType)_gazebo_demo.launch"/>
+	<arg name="dollar" value = "$" />
+	<include file="$(arg dollar)$(arg path)"/>
+	
+	<!-- Notice: When this package is upgraded to kinetic or higher, use eval instead of using two args -->
+	<!-- <include file="$(eval find(arg('kinova_robotType')+'_moveit_config')+'/launch/'+arg('kinova_robotType')+'_demo.launch')"/> -->
+
+	#####################################
+	# Gazebo stuff
+	#####################################
+	<include file="$(find kinova_gazebo)/launch/robot_launch.launch">
+		<arg name="kinova_robotType" value="$(arg kinova_robotType)"/>
+		<arg name="is7dof" value="$(arg is7dof)"/>
+		<arg name="use_trajectory_controller" value="$(arg use_trajectory_controller)"/>
+	</include>
+
+	#####################################
+	# Teleop stuff
+	#####################################
+	# Using moveit joystick control
+	<group if="$(arg ps3)">
+		<arg name="path_teleop" value="(find $(arg kinova_robotType)_moveit_config)/launch/joystick_control.launch"/>
+		<include file="$(arg dollar)$(arg path_teleop)"/>
+		<node pkg="jaco_teleop" type="moveit_teleop.py" name="moveit_teleop"/>
+	</group>
+	# Using our custom teleop node: 
+
+</launch>

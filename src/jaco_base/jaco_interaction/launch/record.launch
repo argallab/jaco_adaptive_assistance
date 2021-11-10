@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+<arg name="bag_prefix" default=""/>
+
+<node name="data_record" pkg="rosbag" type="record" args=" -o $(arg bag_prefix)
+
+/control_input
+/j2s7s300/joint_states
+/j2s7s300_driver/out/joint_state
+/j2s7s300_driver/out/tool_pose
+/joy
+/keyboard_entry
+/mode_switches
+/tf
+/user_vel
+" 
+
+/>
+
+</launch>

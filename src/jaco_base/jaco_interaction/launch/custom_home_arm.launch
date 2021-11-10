@@ -1,0 +1,4 @@
+<launch>
+	<!-- <node name="waypoint_nav_node" pkg="jaco_interaction" type="waypoint_navigation" respawn="false" output="screen" /> -->
+	<node pkg="jaco_interaction" type="custom_home_arm" name="custom_home_arm" output="screen"/>
+</launch>

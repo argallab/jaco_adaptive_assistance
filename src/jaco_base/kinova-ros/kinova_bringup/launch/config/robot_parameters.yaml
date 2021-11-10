@@ -1,0 +1,56 @@
+# Set this parameter to use a specific arm on your system    -->
+# serial_number: PJ00000001030703130
+
+# Joint speed limit for joints 1, 2, 3
+jointSpeedLimitParameter1: 10
+
+# Joint speed limit for joints 4, 5, 6
+jointSpeedLimitParameter2: 20
+
+# payload: [COM COMx COMy COMz]
+#payload: [0, 0, 0, 0]
+
+connection_type: USB #Ethernet
+
+# Ethernet connection parameters
+ethernet: {
+  local_machine_IP: 192.168.100.100,
+  subnet_mask: 255.255.255.0,
+  local_cmd_port: 25000,
+  local_broadcast_port: 25025
+}
+
+#Torque control parameters
+#Do not change these parameters unless you want to change torque control behavior
+torque_parameters: {
+      publish_torque_with_gravity_compensation: true,
+      use_estimated_COM_parameters: true,
+    # if torque min/max sepecified, all min/max values need to be specified
+    #  torque_min: [80, 80, 80, 80, 80, 80, 80],
+    #  torque_max: [90, 90, 90, 90, 90, 90, 90],
+    # Decides velocity threshold at which robot switches torque to position control (between 0 and 1)
+    # safety_factor: 1,
+    # COM parameters
+    # order [m1,m2,...,m7,x1,x2,...,x7,y1,y2,...y7,z1,z2,...z7]
+    com_parameters: [-7.17435e-05,
+                    -1.55291,
+                    0.00413758,
+                    -0.0212314,
+                    -0.012743,
+                    -0.603947,
+                    -0.00737576,
+                    -0.00499949,
+                    -0.00360471,
+                    -0.170931,
+                    0.00377145,
+                    -0.00336144,
+                    0.227819,
+                    0.432243,
+                    -0.146232,
+                    0.426293,
+                    -0.041007,
+                    0.00925754,
+                    0.0304407]
+}
+#[0.00789094, -1.53674, -0.000387752, -0.0221616, -0.00961276, -0.601801, -0.00546886, -0.0025799, -0.00301647, -0.170889, 0.00280685, -0.00330959, 0.352446, 0.156058, 0.323531, 0.223586, -0.0336938, -0.0322906, 0.0316829]
+# Old COM Parameters: [0.000517489,-1.53949,0.00414294,-0.0186366,-0.0172144,-0.606276,-0.00680564,-0.00407307,-0.00261946,-0.16981,0.00564529,-0.00224557,0.399988,0.281676,-0.189164,-0.0406601,-0.0742801,-0.0353354,0.0282632]
