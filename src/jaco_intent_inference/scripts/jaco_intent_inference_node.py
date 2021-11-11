@@ -49,11 +49,32 @@ class JacoIntentInference(object):
         self.eef_position = npa([0] * 3, dtype="f")
         self.eef_quats = npa([0] * 4, dtype="f")
 
-        self.P_PHI_GIVEN_A = collections.OrderedDict()
-        self.init_P_PHI_GIVEN_A()
+        self.distribution_directory_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "se2_personalized_distributions"
+        )
+        # unify the initialization of these distribution between different classes
+        # init all distributions from file
+        if os.path.exists(os.path.join(self.distribution_directory_path, str(self.subject_id) + "_p_phi_given_a.pkl")):
+            print("LOADING PERSONALIZED P_PHI_GIVEN_A")
+            with open(
+                os.path.join(self.distribution_directory_path, str(self.subject_id) + "_p_phi_given_a.pkl"), "rb"
+            ) as fp:
+                self.P_PHI_GIVEN_A = pickle.load(fp)
+        else:
+            self.P_PHI_GIVEN_A = collections.OrderedDict()
+            self.init_P_PHI_GIVEN_A()
 
-        self.P_PHM_GIVEN_PHI = collections.OrderedDict()
-        self.init_P_PHM_GIVEN_PHI()
+        if os.path.exists(
+            os.path.join(self.distribution_directory_path, str(self.subject_id) + "_p_phm_given_phi.pkl")
+        ):
+            print("LOADING PERSONALIZED P_PHM_GIVEN_PHI")
+            with open(
+                os.path.join(self.distribution_directory_path, str(self.subject_id) + "_p_phm_given_phi.pkl"), "rb"
+            ) as fp:
+                self.P_PHM_GIVEN_PHI = pickle.load(fp)
+        else:
+            self.P_PHM_GIVEN_PHI = collections.OrderedDict()
+            self.init_P_PHM_GIVEN_PHI()
 
         rospy.loginfo("Waiting for sim_env node ")
         rospy.wait_for_service("/sim_env/get_prob_a_s_all_g")
