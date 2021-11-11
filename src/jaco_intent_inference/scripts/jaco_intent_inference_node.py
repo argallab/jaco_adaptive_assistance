@@ -158,13 +158,14 @@ class JacoIntentInference(object):
         )
         self.user_vel = intent_inference_data.user_vel.velocity.data  # 6D
         self.goal_velocities = intent_inference_data.robot_vels
-        self.robot_discrete_state = intent_inference_data.robot_discrete_state
+        self.robot_discrete_state = intent_inference_data.robot_discrete_state  # (x,y,z,m) #where m is in 1,2,3,4,5,6
         # not needed for confidences because this is instantaneous
         self.P_G_GIVEN_UH = npa(intent_inference_data.current_p_g_given_uh)
         phm = intent_inference_data.phm
+        current_mode = self.robot_discrete_state[-1]
 
         if not self.is_freeze_update:
-            if self.robot_discrete_state[-1] in [1, 2, 3] and phm != "None" and phm != "input stopped":
+            if current_mode in [1, 2, 3] and phm != "None" and phm != "input stopped":
                 # do Bayesian update
                 # print('IN BAYESIAN')
                 p_a_s_all_g_response = self.get_prob_a_s_all_g()
@@ -178,7 +179,7 @@ class JacoIntentInference(object):
                     # get optimal action for all goals for current state as a list ordered by goal index
                     self.OPTIMAL_ACTION_FOR_S_G = p_a_s_all_g_response.optimal_action_s_g
                     assert len(self.OPTIMAL_ACTION_FOR_S_G) == self.NUM_GOALS
-                self._handle_bayesian_update(phm)
+                self._handle_bayesian_update(phm, current_mode)
             else:
                 # print('IN DFT')
                 # for rotation stuff
@@ -257,14 +258,16 @@ class JacoIntentInference(object):
         # self.curr_pg = self.curr_pg/np.sum(self.curr_pg)
         self.curr_pg = self.curr_pg.reshape(self.curr_pg.size, 1)
 
-    def _handle_bayesian_update(self, phm):
-        if phm != "None":
+    def _handle_bayesian_update(self, phm, current_mode):
+        if phm != "None" and phm != "Soft-Hard Puff Deadband" and phm != "Soft-Hard Sip Deadband":
             for g in range(self.NUM_GOALS):
                 likelihood = 0.0
-                for a in self.P_PHI_GIVEN_A.keys():
+                for a in self.P_PHI_GIVEN_A[current_mode].keys():
                     for phi in self.P_PHM_GIVEN_PHI.keys():
                         likelihood += (
-                            self.P_PHM_GIVEN_PHI[phi][phm] * self.P_PHI_GIVEN_A[a][phi] * self.P_A_S_ALL_G_DICT[g][a]
+                            self.P_PHM_GIVEN_PHI[phi][phm]
+                            * self.P_PHI_GIVEN_A[current_mode][a][phi]
+                            * self.P_A_S_ALL_G_DICT[g][a]
                         )
                 self.P_G_GIVEN_UH[g] = self.P_G_GIVEN_UH[g] * likelihood  # multiply with prior
 
@@ -279,22 +282,24 @@ class JacoIntentInference(object):
     def init_P_PHI_GIVEN_A(self):
         # only to be done at the beginning of a session for a subject. No updating between trials
         self.P_PHI_GIVEN_A = collections.OrderedDict()
-        for k in TRUE_TASK_ACTION_TO_INTERFACE_ACTION_MAP.keys():  # task level action
-            self.P_PHI_GIVEN_A[k] = collections.OrderedDict()
-            for u in INTERFACE_LEVEL_ACTIONS:
-                if u == TRUE_TASK_ACTION_TO_INTERFACE_ACTION_MAP[k]:
-                    # try to weight the true command more for realistic purposes. Can be offset by using a high PHI_GIVEN_A_NOISE
-                    self.P_PHI_GIVEN_A[k][u] = 1.0
-                else:
-                    self.P_PHI_GIVEN_A[k][u] = 0.0
+        for mode in [1, 2, 3]:  # hard coded modes for XYZ of the JACO robot
+            self.P_PHI_GIVEN_A[mode] = collections.OrderedDict()
+            for k in TRUE_TASK_ACTION_TO_INTERFACE_ACTION_MAP.keys():  # task level action
+                self.P_PHI_GIVEN_A[mode][k] = collections.OrderedDict()
+                for u in INTERFACE_LEVEL_ACTIONS:
+                    if u == TRUE_TASK_ACTION_TO_INTERFACE_ACTION_MAP[k]:
+                        # try to weight the true command more for realistic purposes. Can be offset by using a high PHI_GIVEN_A_NOISE
+                        self.P_PHI_GIVEN_A[mode][k][u] = 1.0
+                    else:
+                        self.P_PHI_GIVEN_A[mode][k][u] = 0.0
 
-            delta_dist = np.array(list(self.P_PHI_GIVEN_A[k].values()))
-            uniform_dist = (1.0 / len(INTERFACE_LEVEL_ACTIONS)) * np.ones(len(INTERFACE_LEVEL_ACTIONS))
-            blended_dist = (
-                1 - self.DEFAULT_PHI_GIVEN_A_NOISE
-            ) * delta_dist + self.DEFAULT_PHI_GIVEN_A_NOISE * uniform_dist  # np.array
-            for index, u in enumerate(INTERFACE_LEVEL_ACTIONS):
-                self.P_PHI_GIVEN_A[k][u] = blended_dist[index]
+                delta_dist = np.array(list(self.P_PHI_GIVEN_A[mode][k].values()))
+                uniform_dist = (1.0 / len(INTERFACE_LEVEL_ACTIONS)) * np.ones(len(INTERFACE_LEVEL_ACTIONS))
+                blended_dist = (
+                    1 - self.DEFAULT_PHI_GIVEN_A_NOISE
+                ) * delta_dist + self.DEFAULT_PHI_GIVEN_A_NOISE * uniform_dist  # np.array
+                for index, u in enumerate(INTERFACE_LEVEL_ACTIONS):
+                    self.P_PHI_GIVEN_A[mode][k][u] = blended_dist[index]
 
     def init_P_PHM_GIVEN_PHI(self):
         """
