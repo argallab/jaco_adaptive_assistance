@@ -380,40 +380,60 @@ class Simulator(object):
                 # TODO: determine end condition here?
 
                 if self.condition == "disamb":
-                    if (
-                        self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD
-                        and normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD
-                    ):
+                    if (self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD):
+                        if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD
+                            print("ACTIVATING DISAMB")
+                            self.freeze_update_request.data = False
+                            self.freeze_update_srv(self.freeze_update_request)
+                            belief_at_disamb_time = self.current_p_g_given_uh
+                            max_disamb_state = self.disamb_algo.get_local_disamb_state(
+                                belief_at_disamb_time, robot_discrete_state
+                            )
+                            print("CURRENT_DISCRETE STATE", robot_discrete_state, robot_position, robot_orientation)
+                            print("MAX_DISAMB STATE", max_disamb_state)
+                            (max_disamb_continuous_position, _) = self._convert_discrete_state_to_continuous_position(
+                                max_disamb_state, mdp_env_params["cell_size"], self.world_bounds
+                            )
 
-                        print("ACTIVATING DISAMB")
-                        self.freeze_update_request.data = False
-                        self.freeze_update_srv(self.freeze_update_request)
-                        belief_at_disamb_time = self.current_p_g_given_uh
-                        max_disamb_state = self.disamb_algo.get_local_disamb_state(
-                            belief_at_disamb_time, robot_discrete_state
-                        )
-                        print("CURRENT_DISCRETE STATE", robot_discrete_state, robot_position, robot_orientation)
-                        print("MAX_DISAMB STATE", max_disamb_state)
-                        (max_disamb_continuous_position, _) = self._convert_discrete_state_to_continuous_position(
-                            max_disamb_state, mdp_env_params["cell_size"], self.world_bounds
-                        )
+                            self.update_goal_pfield_request.pfield_id = "disamb"
+                            self.update_goal_pfield_request.goal_position.x = max_disamb_continuous_position[0]
+                            self.update_goal_pfield_request.goal_position.y = max_disamb_continuous_position[1]
+                            self.update_goal_pfield_request.goal_position.z = max_disamb_continuous_position[2]
+                            self.update_goal_pfield_request.goal_orientation.x = robot_orientation[0]
+                            self.update_goal_pfield_request.goal_orientation.y = robot_orientation[1]
+                            self.update_goal_pfield_request.goal_orientation.z = robot_orientation[2]
+                            self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
+                            self.update_goal_pfield_srv(self.update_goal_pfield_request)
 
-                        self.update_goal_pfield_request.pfield_id = "disamb"
-                        self.update_goal_pfield_request.goal_position.x = max_disamb_continuous_position[0]
-                        self.update_goal_pfield_request.goal_position.y = max_disamb_continuous_position[1]
-                        self.update_goal_pfield_request.goal_position.z = max_disamb_continuous_position[2]
-                        self.update_goal_pfield_request.goal_orientation.x = robot_orientation[0]
-                        self.update_goal_pfield_request.goal_orientation.y = robot_orientation[1]
-                        self.update_goal_pfield_request.goal_orientation.z = robot_orientation[2]
-                        self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
-                        self.update_goal_pfield_srv(self.update_goal_pfield_request)
+                            self.is_autonomy_turn = True
+                            self.autonomy_turn_start_time = time.time()
+                            disamb_state_mode_index = max_disamb_state[-1]
+                            if disamb_state_mode_index != robot_discrete_state[-1]:
+                                pass
+                            self.env.set_mode_in_robot(disamb_state_mode_index)
+                        else:
+                            # human has stopped. autonomy' turn. Upon waiting, the confidence is still high. Therefore, move the robot to current confident goal.
+                            print('ACTIVATING AUTONOMY')
 
-                        self.is_autonomy_turn = True
-                        self.autonomy_turn_start_time = time.time()
-                        disamb_state_mode_index = max_disamb_state[-1]
-                        if disamb_state_mode_index != robot_discrete_state[-1]:
-                            pass
-                        self.env.set_mode_in_robot(disamb_state_mode_index)
+                            self.freeze_update_request.data = True
+                            self.freeze_update_srv(self.freeze_update_request)
+                            belief_at_disamb_time = self.current_p_g_given_uh
+                            inferred_goal_position = self.obj_positions[inferred_goal_id]
+                            target_point = self._get_target_along_line(robot_position, inferred_goal_position)
+                            max_disamb_continuous_position = target_point
+                            
+                            self.autonomy_turn_start_time = time.time()
+                            self.update_goal_pfield_request.pfield_id = "disamb"
+                            self.update_goal_pfield_request.goal_position.x = target_point[0]
+                            self.update_goal_pfield_request.goal_position.y = target_point[1]
+                            self.update_goal_pfield_request.goal_position.z = target_point[2]
+                            self.update_goal_pfield_request.goal_orientation.x = robot_orientation[0]
+                            self.update_goal_pfield_request.goal_orientation.y = robot_orientation[1]
+                            self.update_goal_pfield_request.goal_orientation.z = robot_orientation[2]
+                            self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
+                            self.update_goal_pfield_srv(self.update_goal_pfield_request)
+                            self.is_autonomy_turn = True
+
                 elif self.condition == "control":
                     if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         print("ACTIVATING AUTONOMY")
