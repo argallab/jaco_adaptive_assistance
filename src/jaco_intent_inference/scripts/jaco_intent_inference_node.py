@@ -50,7 +50,7 @@ class JacoIntentInference(object):
         self.eef_quats = npa([0] * 4, dtype="f")
 
         self.distribution_directory_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "se2_personalized_distributions"
+            os.path.dirname(os.path.dirname(__file__)), "jaco_personalized_distributions"
         )
         # unify the initialization of these distribution between different classes
         # init all distributions from file
