@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <arg name="save" default="false" doc="Set to true if you wanted save bag file of trial"/>
+  <arg name="subject_id" default="test" doc="trial identifier string"/>
+
+  <arg name="duration" default="4" doc="Duration to show each command"/>
+  <arg name="iteration" default="5" doc="Number of times to display each command"/>
+
+  <arg name="SNP" default="true" doc="Set to true if using sip/puff to control arm."/>
+  <arg name="JOINT" default="true" doc="Set to true if joint velocity control"/>
+  <arg name="snp_training" default="1" doc="Set to true if snp is used for training"/>
+
+  <!-- record bags -->
+  <!-- bag file name parameters -->  
+  <group if="$(arg save)">
+    <include file="$(find simulators)/launch/record.launch">
+      <arg name="bag_prefix" value="$(arg subject_id)_p_phm_given_phi"/>
+    </include>    
+  </group>
+
+  <node pkg="simulators" output="screen" type="p_phm_given_phi_simulator.py" name="p_phm_given_phi_simulator" args="$(arg duration) $(arg iteration)"/>
+
+  <!-- keyboard node for experiment supervisor -->
+  <node pkg="general_purpose" output="screen" type="keyboard_input_to_topic" name="keyboard_input_to_topic"/>
+
+  <include file="$(find teleop_nodes)/launch/teleop_nodes.launch">
+		<arg name="SNP" value="$(arg SNP)"/>
+		<arg name="JOINT" value="$(arg JOINT)"/>
+		<arg name="snp_training" value="$(arg snp_training)"/>
+		<arg name="robot_dim" value="3"/>
+		<arg name="finger_dim" value="0"/>
+	</include>
+
+</launch>
