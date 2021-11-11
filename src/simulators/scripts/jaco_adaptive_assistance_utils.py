@@ -251,6 +251,11 @@ class JacoRobotSE3(object):
         for acd, mcd in zip(_allowed_control_dimensions, _mappable_control_dimensions):
             true_velocity[acd] = velocity_action[mcd]
 
+        #flip x,y,z, so that "puff" results in rightward, forwards and downwards movement of the arm. Visually sensible. 
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['X']] = -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['X']]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Y']] = -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Y']]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Z']] = -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Z']]
+        
         return true_velocity
 
 

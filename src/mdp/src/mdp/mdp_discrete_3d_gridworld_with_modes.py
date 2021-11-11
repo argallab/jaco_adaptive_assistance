@@ -159,9 +159,10 @@ class MDPDiscrete3DGridWorldWithModes(DiscreteMDP):
                 new_state_x = state_coord[Dim.X.value]
                 new_state_y = state_coord[Dim.Y.value]
                 new_state_z = state_coord[Dim.Z.value]
-                new_state_x = new_state_x + vel_tuple[Dim.X.value]
-                new_state_y = new_state_y + vel_tuple[Dim.Y.value]
-                new_state_z = new_state_z + vel_tuple[Dim.Z.value]
+                # "move_p" results in "decrease of coordinates" because we want soft puff to match to rightwards motion of JACO (which is the -ve x direction)
+                new_state_x = new_state_x - vel_tuple[Dim.X.value]
+                new_state_y = new_state_y - vel_tuple[Dim.Y.value]
+                new_state_z = new_state_z - vel_tuple[Dim.Z.value]
                 new_state_coord = [new_state_x, new_state_y, new_state_z, state_coord[Dim.Mode3D.value]]
                 transition_type = TransitionType.VALID
                 if (
@@ -200,7 +201,7 @@ class MDPDiscrete3DGridWorldWithModes(DiscreteMDP):
         # deal with movement type actions
         if task_level_action == "move_p" or task_level_action == "move_n":
             action_val = self.ACTION_VALS[task_level_action]  # increment of decrement in the mode that allow movement
-            action_vector[state_coord[Dim.Mode3D.value] - 1] = action_val  # -1 because 1,2,3 are the mode values
+            action_vector[state_coord[Dim.Mode3D.value] - 1] = action_val  # -1 in index because 1,2,3 are the mode values
         elif task_level_action == "to_mode_r" or task_level_action == "to_mode_l":  # mode switch action
             action_val = self.ACTION_VALS[task_level_action]
             action_vector[-1] = action_val  # [0,0,0,-1/+1] -1 in the because mode is the LAST dimension
