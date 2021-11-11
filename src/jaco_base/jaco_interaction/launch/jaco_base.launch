@@ -56,27 +56,18 @@
   # homing service
   #####################################
   <group if="$(arg homing)">
-    <!-- <node pkg="rosservice" type="rosservice" name="home_arm" args="call -wait /$(arg kinova_robotType)_driver/in/home_arm"/> -->
-    <node pkg="rosservice" type="rosservice" name="custom_home" args="call --wait /custom_home 'success: true'"/>
+    <node pkg="rosservice" type="rosservice" name="home_arm" args="call /$(arg kinova_robotType)_driver/in/home_arm"/>
+    <!-- <node pkg="rosservice" type="rosservice" name="custom_home" args="call -wait /custom_home 'success: true'"/> -->
   </group>
 
   #####################################
   # basic environment rviz
   #####################################
 
+  <!-- Mode Display -->
+	<arg name="PORT" default="/dev/ttyACM0" />
+	<node pkg="rosserial_python" name="mode_display_arduino" type="serial_node.py" args="$(arg PORT)" />
 
-  #####################################
-  # load teleop node (control mode "cartesian" or "joint")
-  #####################################
-  <include file="$(find jaco_teleop)/launch/jaco_teleop.launch">
-    <arg name="JOY" value="$(arg JOY)"/>
-    <arg name="HA" value="$(arg HA)"/>
-    <arg name="SNP" value="$(arg SNP)"/>
-    <arg name="MS" value="$(arg MS)"/>
-    <arg name="blending" value="$(arg blending)"/>
-    <arg name="PS3" value="$(arg PS3)"/>
-    <arg name="JOINT" value="$(arg JOINT)"/>
-  </include>
 
 
 </launch>

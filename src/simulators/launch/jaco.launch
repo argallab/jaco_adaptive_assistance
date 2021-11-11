@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <arg name="save" default="false" doc="Set to true if you wanted save bag file of trial"/>
+
+  <arg name="subject_id" default="test" doc="Unique string identifier for the subject"/>
+  <!-- record bags -->
+  <!-- bag file name parameters -->
+  <group if="$(arg save)">
+    <include file="$(find simulators)/launch/record.launch">
+      <arg name="bag_prefix" value="$(arg subject_id)_$(arg assistance_block)_assistance_$(arg block_id)_mode_inference"/>
+    </include>
+  </group>
+
+  
+  <arg name="SNP" default="true" doc="Set to true if using sip/puff to control arm."/>
+  <node pkg="jaco_pfields_node" output="screen" type="jaco_pfields_multiple_node.py" name="jaco_pfields_multiple_node"/>
+  <node pkg="simulators" output="screen" type="jaco_env_simulator.py" name="jaco_env_simulator"  args="$(arg subject_id)"/>
+  <node pkg="jaco_intent_inference" output="screen" type="jaco_intent_inference_node.py" name="jaco_intent_inference_node" />
+  
+  
+  <include file="$(find teleop_nodes)/launch/teleop_nodes.launch">
+    <arg name="SNP" value="$(arg SNP)"/>
+  </include>
+
+</launch>

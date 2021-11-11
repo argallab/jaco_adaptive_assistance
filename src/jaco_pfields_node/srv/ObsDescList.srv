@@ -1,0 +1,5 @@
+int32 num_obstacles
+string pfield_id
+ObsDesc[] obs_descs
+---
+bool success

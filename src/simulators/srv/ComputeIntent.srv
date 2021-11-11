@@ -1,0 +1,8 @@
+geometry_msgs/Pose robot_pose
+teleop_nodes/CartVelCmd user_vel
+teleop_nodes/CartVelCmd[] robot_vels
+float32[] current_p_g_given_uh
+int32[] robot_discrete_state
+string phm
+---
+float32[] updated_p_g_given_uh

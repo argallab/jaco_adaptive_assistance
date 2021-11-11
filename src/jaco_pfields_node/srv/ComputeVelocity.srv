@@ -1,0 +1,11 @@
+
+geometry_msgs/Vector3 current_robot_position
+geometry_msgs/Vector3 current_robot_hand_position
+geometry_msgs/Vector3 current_robot_finger_position_1
+geometry_msgs/Vector3 current_robot_finger_position_2
+geometry_msgs/Vector3 current_robot_finger_position_3
+geometry_msgs/Quaternion current_robot_quat
+
+string pfield_id
+---
+float32[] velocity_final
