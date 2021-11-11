@@ -47,7 +47,7 @@ class JacoIntentInference(object):
 
         self.is_freeze_update = False
         self.eef_position = npa([0] * 3, dtype="f")
-        self.eef_quats = npa([0] * 4, dtype="f")
+        self.eef_quat = npa([0] * 4, dtype="f")
 
         self.distribution_directory_path = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "jaco_personalized_distributions"
