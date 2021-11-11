@@ -27,7 +27,7 @@ class SNPMapping(object):
 
     """data is a Float32Array message"""
 
-    def __init__(self):
+    def __init__(self, training=0):
 
         # Initialize
         rospy.init_node("sip_puff_mapping", anonymous=True)
@@ -76,20 +76,14 @@ class SNPMapping(object):
         self.before_send_msg.header.frame_id = "Zero Band"
         self.before_send_msg.axes = np.zeros(1)  # pressure ([-1, 1])
         self.before_send_msg.buttons = np.zeros(4)  # hard puff, soft puff, soft sip, hard sip
+        self.training = training
 
-        # self.assistance_type = rospy.get_param("/assistance_type", 2)
-        # if self.assistance_type == 0:
-        #     self.assistance_type = AssistanceType.Filter
-        # elif self.assistance_type == 1:
-        #     self.assistance_type = AssistanceType.Corrective
-        # elif self.assistance_type == 2:
-        #     self.assistance_type = AssistanceType.No_Assistance
+        # if not self.training:
+        #     rospy.loginfo("Waiting for goal_inference node ")
+        #     rospy.wait_for_service("/goal_inference/handle_inference")
+        #     rospy.loginfo("Found goal_inference")
+        #     self.goal_inference_service = rospy.ServiceProxy("/goal_inference/handle_inference", GoalInferenceInfo)
 
-        # rospy.loginfo("Waiting for goal_inference node ")
-        # rospy.wait_for_service("/goal_inference/handle_inference")
-        # rospy.loginfo("Found goal_inference")
-
-        # self.goal_inference_service = rospy.ServiceProxy("/goal_inference/handle_inference", GoalInferenceInfo)
         self.running = False
         self.runningCV = threading.Condition()
         self.rate = rospy.Rate(10)
@@ -136,9 +130,9 @@ class SNPMapping(object):
             self.send_msg.buttons[3] = 1
         else:
             if airVelocity < 0:
-                self.send_msg.header.frame_id = "None"
+                self.send_msg.header.frame_id = "Soft-Hard Puff Deadband"
             else:
-                self.send_msg.header.frame_id = "None"
+                self.send_msg.header.frame_id = "Soft-Hard Sip Deadband"
             self.send_msg.buttons = np.zeros(4)
 
         self.before_send_msg.header.frame_id = self.send_msg.header.frame_id
@@ -146,11 +140,17 @@ class SNPMapping(object):
         self.before_inference_pub.publish(self.before_send_msg)
 
         # # self.update_assistance_type()
-        # request = GoalInferenceInfoRequest()
-        # request.phm = self.send_msg.header.frame_id
-        # response = self.goal_inference_service(request)
-        # self.send_msg.buttons = np.zeros(4)
-        if self.send_msg.header.frame_id != "None":
+        # if not self.training:
+        #     request = GoalInferenceInfoRequest()
+        #     request.phm = self.send_msg.header.frame_id
+        #     response = self.goal_inference_service(request)
+
+        self.send_msg.buttons = np.zeros(4)
+        if (
+            self.send_msg.header.frame_id != "None"
+            and self.send_msg.header.frame_id != "Soft-Hard Puff Deadband"
+            and self.send_msg.header.frame_id != "Soft-Hard Sip Deadband"
+        ):
             self.send_msg.buttons[self.command_to_button_index_map[self.send_msg.header.frame_id]] = 1
 
         return 0
@@ -203,6 +203,6 @@ class SNPMapping(object):
 
 
 if __name__ == "__main__":
-
-    s = SNPMapping()
+    snp_training = int(sys.argv[1])
+    s = SNPMapping(snp_training)
     s.spin()

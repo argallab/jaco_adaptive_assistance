@@ -15,13 +15,15 @@
 
   
   <arg name="SNP" default="true" doc="Set to true if using sip/puff to control arm."/>
+  <arg name="snp_training" default="0" doc="Set to true if snp is used for training"/>
   <node pkg="jaco_pfields_node" output="screen" type="jaco_pfields_multiple_node.py" name="jaco_pfields_multiple_node"/>
   <node pkg="simulators" output="screen" type="jaco_env_simulator.py" name="jaco_env_simulator"  args="$(arg subject_id)"/>
-  <node pkg="jaco_intent_inference" output="screen" type="jaco_intent_inference_node.py" name="jaco_intent_inference_node" />
+  <node pkg="jaco_intent_inference" output="screen" type="jaco_intent_inference_node.py" name="jaco_intent_inference_node" args="$(arg subject_id)"/>
   
   
   <include file="$(find teleop_nodes)/launch/teleop_nodes.launch">
     <arg name="SNP" value="$(arg SNP)"/>
+    <arg name="snp_training" value="$(arg snp_training)"/>
   </include>
 
 </launch>

@@ -381,7 +381,7 @@ class Simulator(object):
 
                 if self.condition == "disamb":
                     if (self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD):
-                        if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD
+                        if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD:
                             print("ACTIVATING DISAMB")
                             self.freeze_update_request.data = False
                             self.freeze_update_srv(self.freeze_update_request)

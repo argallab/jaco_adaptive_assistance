@@ -9,6 +9,7 @@ import tf.transformations as tfs
 import collections
 import os
 import rospkg
+import pickle
 
 sys.path.append(os.path.join(rospkg.RosPack().get_path("simulators"), "scripts"))
 from simulators.srv import InitBelief, InitBeliefRequest, InitBeliefResponse
@@ -26,7 +27,7 @@ npa = np.array
 
 
 class JacoIntentInference(object):
-    def __init__(self):
+    def __init__(self, subject_id):
         rospy.init_node("jaco_intent_inference")
         self.lock = threading.Lock()
 
@@ -45,12 +46,13 @@ class JacoIntentInference(object):
         self.DEFAULT_PHI_GIVEN_A_NOISE = 0.1
         self.DEFAULT_PHM_GIVEN_PHI_NOISE = 0.1
 
+        self.subject_id = subject_id
         self.is_freeze_update = False
         self.eef_position = npa([0] * 3, dtype="f")
         self.eef_quat = npa([0] * 4, dtype="f")
 
         self.distribution_directory_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "jaco_personalized_distributions"
+            os.path.dirname(os.path.dirname(__file__)), "personalized_distributions"
         )
         # unify the initialization of these distribution between different classes
         # init all distributions from file
@@ -326,5 +328,6 @@ class JacoIntentInference(object):
 
 
 if __name__ == "__main__":
-    JacoIntentInference()
+    subject_id = sys.argv[1]
+    JacoIntentInference(subject_id)
     rospy.spin()
