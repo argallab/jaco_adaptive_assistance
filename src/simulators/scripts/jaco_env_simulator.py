@@ -130,7 +130,7 @@ class Simulator(object):
         else:
             self.confidence_slope = -1.0
 
-        self.ENTROPY_THRESHOLD = 0.99
+        self.ENTROPY_THRESHOLD = 0.7
         self.AUTONOMY_TURN_TIMEOUT = 8  # in secs
         self.autonomy_turn_start_time = 0.0
         self.current_inferred_goal_id = 0
@@ -380,7 +380,7 @@ class Simulator(object):
                 # TODO: determine end condition here?
 
                 if self.condition == "disamb":
-                    if (self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD):
+                    if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD:
                             print("ACTIVATING DISAMB")
                             self.freeze_update_request.data = False
@@ -413,7 +413,7 @@ class Simulator(object):
                             self.env.set_mode_in_robot(disamb_state_mode_index)
                         else:
                             # human has stopped. autonomy' turn. Upon waiting, the confidence is still high. Therefore, move the robot to current confident goal.
-                            print('ACTIVATING AUTONOMY')
+                            print("ACTIVATING AUTONOMY")
 
                             self.freeze_update_request.data = True
                             self.freeze_update_srv(self.freeze_update_request)
@@ -421,7 +421,7 @@ class Simulator(object):
                             inferred_goal_position = self.obj_positions[inferred_goal_id]
                             target_point = self._get_target_along_line(robot_position, inferred_goal_position)
                             max_disamb_continuous_position = target_point
-                            
+
                             self.autonomy_turn_start_time = time.time()
                             self.update_goal_pfield_request.pfield_id = "disamb"
                             self.update_goal_pfield_request.goal_position.x = target_point[0]
