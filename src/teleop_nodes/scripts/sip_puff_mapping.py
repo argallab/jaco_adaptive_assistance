@@ -27,7 +27,7 @@ class SNPMapping(object):
 
     """data is a Float32Array message"""
 
-    def __init__(self, training=0):
+    def __init__(self, snp_training=0):
 
         # Initialize
         rospy.init_node("sip_puff_mapping", anonymous=True)
@@ -76,7 +76,7 @@ class SNPMapping(object):
         self.before_send_msg.header.frame_id = "Zero Band"
         self.before_send_msg.axes = np.zeros(1)  # pressure ([-1, 1])
         self.before_send_msg.buttons = np.zeros(4)  # hard puff, soft puff, soft sip, hard sip
-        self.training = training
+        self.snp_training = snp_training
 
         # if not self.training:
         #     rospy.loginfo("Waiting for goal_inference node ")

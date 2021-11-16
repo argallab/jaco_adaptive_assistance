@@ -119,7 +119,7 @@ class DiscreteMIDisambAlgo(object):
                 sampled_goal_index = np.random.choice(self.num_goals, p=prior)
                 mdp_for_sampled_goal = self.mdp_list[sampled_goal_index]
                 # sub optimal a_sampled
-                a_sampled = mdp_for_sampled_goal.get_optimal_action(vs, return_optimal=True)
+                a_sampled = mdp_for_sampled_goal.get_optimal_action(vs, return_optimal=False)
                 # sampled corrupted interface level action corresponding to task-level action, could be None
                 phi = self.sample_phi_given_a(a_sampled, vs_mode)
                 # corrupted interface level action, could be None

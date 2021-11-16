@@ -58,9 +58,11 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from mdp.mdp_discrete_3d_gridworld_with_modes import MDPDiscrete3DGridWorldWithModes
 import numpy as np
+import tf.transformations as tfs
 import sys
 import os
 import copy
+import numpy as np
 
 from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
@@ -255,8 +257,11 @@ class Simulator(object):
         self.has_human_initiated = False
         self.autonomy_activate_ctr = 0
         self.DISAMB_ACTIVATE_THRESHOLD = 100
-
+        is_done = False
         while not rospy.is_shutdown():
+            if is_done:
+                self.shutdown_hook("reached end of trial")
+                break
             robot_position = self.env.get_robot_position()  # continuous [x,y,z]
             robot_orientation = self.env.get_robot_orientation()  # continuous 4d quat
             robot_full_state = self.env.get_robot_full_state()
@@ -284,9 +289,8 @@ class Simulator(object):
 
             self.compute_intent_request.user_vel.velocity.data = human_vel  # 6d
             self.compute_intent_request.robot_discrete_state = list(robot_discrete_state)
-            self.compute_intent_request.phm = self.input_action[
-                "human"
-            ].interface_action  # string containing the current phm
+            # string containing the current phm
+            self.compute_intent_request.phm = self.input_action["human"].interface_action
             self.compute_intent_request.robot_vels = []  # list of autonomy vels for each goal
             # print('current discrete state, phm', robot_discrete_state, self.input_action['human'].interface_action)
             # grab autonomy vels for each goal. Need to pass as part of belief update request as well for blending
@@ -363,7 +367,7 @@ class Simulator(object):
                         # zero human vel and human has already issued some non-zero velocities during their turn,
                         # in which case keep track of inactivity time
                         self.autonomy_activate_ctr += 1
-                        print("ACTIVATE AUTONOM CTR", self.autonomy_activate_ctr)
+                        # print("ACTIVATE AUTONOM CTR", self.autonomy_activate_ctr)
                 else:
                     if not self.has_human_initiated:
                         print("HUMAN INITIATED DURING THEIR TURN")
@@ -382,6 +386,7 @@ class Simulator(object):
                 if self.condition == "disamb":
                     if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD:
+                            print("NORMALIZED ENTROPY", normalized_h_of_p_g_given_phm)
                             print("ACTIVATING DISAMB")
                             self.freeze_update_request.data = False
                             self.freeze_update_srv(self.freeze_update_request)
@@ -455,6 +460,20 @@ class Simulator(object):
                         self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
                         self.update_goal_pfield_srv(self.update_goal_pfield_request)
                         self.is_autonomy_turn = True
+
+                for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
+                    if np.linalg.norm(g_position - robot_position) < 0.05:
+                        diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
+                        diff_quat = diff_quat / np.linalg.norm(diff_quat)  # normalize
+                        theta_to_goal = 2 * math.acos(diff_quat[3])  # 0 to 2pi. only rotation in one direction.
+                        if theta_to_goal > math.pi:  # wrap angle
+                            theta_to_goal -= 2 * math.pi
+                            theta_to_goal = abs(theta_to_goal)
+                            diff_quat = -diff_quat
+
+                        if abs(theta_to_goal) < 0.06 and self.has_human_initiated:
+                            is_done = True
+                            break
             else:
                 # what to do during autonomy turn
                 if self.condition == "disamb":
@@ -506,7 +525,7 @@ class Simulator(object):
                         self.autonomy_turn_start_time = 0.0
                     else:
                         self.alpha = 1.0
-                        self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="disamb")
+                        self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="control")
                         self.blendvelpub.publish(self.blend_vel)
 
             # make markers for rvizz
@@ -588,7 +607,7 @@ class Simulator(object):
                 for i in range(self.robot_dim):
                     self.blend_vel.velocity.data[i] = 0.0
 
-        elif blend_mode == "disamb":
+        elif blend_mode == "disamb" or blend_mode == "regular":
             for i in range(self.robot_dim):
                 self.blend_vel.velocity.data[i] = self.alpha * autonomy_vel[i]
 

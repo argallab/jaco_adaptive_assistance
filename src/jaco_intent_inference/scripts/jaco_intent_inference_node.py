@@ -167,7 +167,13 @@ class JacoIntentInference(object):
         current_mode = self.robot_discrete_state[-1]
 
         if not self.is_freeze_update:
-            if current_mode in [1, 2, 3] and phm != "None" and phm != "input stopped":
+            if (
+                current_mode in [1, 2, 3]
+                and phm != "None"
+                and phm != "input stopped"
+                and phm != "Soft-Hard Puff Deadband"
+                and phm != "Soft-Hard Sip Deadband"
+            ):
                 # do Bayesian update
                 # print('IN BAYESIAN')
                 p_a_s_all_g_response = self.get_prob_a_s_all_g()
@@ -190,7 +196,7 @@ class JacoIntentInference(object):
                 if np.linalg.norm(self.user_vel) > 0.01:
                     tau = 4
                 else:
-                    tau = 5
+                    tau = 50
 
                 h = 1.0 / self.NUM_GOALS
                 self.compute_current_input()
