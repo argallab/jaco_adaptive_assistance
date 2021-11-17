@@ -1,0 +1,2 @@
+geometry_msgs/Vector3 robot_position
+geometry_msgs/Quaternion robot_quat
