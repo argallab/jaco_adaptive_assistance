@@ -8,7 +8,7 @@ import os
 import rospkg
 
 sys.path.append(os.path.join(rospkg.RosPack().get_path("simulators"), "scripts"))
-from adaptive_assistance_sim_utils import *
+from jaco_adaptive_assistance_utils import *
 from simulators.msg import Command
 from std_msgs.msg import String
 import pyglet
@@ -19,14 +19,11 @@ from pyglet.window import key
 import random
 import threading
 
-# TODO: (mahdeih) Too many if statments and booleans, can do a better job of the state machine, clean in up!!
 
-
-class PPhiGivenAEnv(object):
+class PPhiGivenASim(object):
     def __init__(self, env_params):
 
         self.viewer = None
-        self.action_msg = Command()
         self.sim_state_msg = String()
 
         self.env_params = env_params
@@ -69,11 +66,6 @@ class PPhiGivenAEnv(object):
     def initialize_publishers(self, rostopic):
         # TODO: clean publishers:
         self.sim_state = rospy.Publisher("sim_state", String, queue_size=1)
-
-    def publish_action(self, msg):
-        self.action_msg.header.stamp = rospy.Time.now()
-        self.action_msg.command = msg
-        self.action_pub.publish(self.action_msg)
 
     def publish_sim_state(self, msg):
         self.sim_state.publish(msg)
@@ -347,6 +339,5 @@ class PPhiGivenAEnv(object):
 
         return False
 
-
-if __name__ == "__main__":
-    PPhiGivenAEnv()
+    def shutdown_hook(self):
+        pass
