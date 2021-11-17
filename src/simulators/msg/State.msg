@@ -1,6 +1,8 @@
 Header header
-float64[] robot_continuous_position
-float64 robot_continuous_orientation
-float64[] robot_linear_velocity
-float64 robot_angular_velocity
+geometry_msgs/Vector3 current_robot_position
+geometry_msgs/Vector3 current_robot_hand_position
+geometry_msgs/Vector3 current_robot_finger_position_1
+geometry_msgs/Vector3 current_robot_finger_position_2
+geometry_msgs/Vector3 current_robot_finger_position_3
+geometry_msgs/Quaternion current_robot_quat
 DiscreteState robot_discrete_state

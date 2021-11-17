@@ -153,6 +153,34 @@ class JacoIntentInference(object):
         for i in range(0, self.NUM_GOALS):
             self.distanceToGoals[i] = np.linalg.norm(self.eef_position - self.goal_positions[i])
 
+    def _is_bayesian_applicable(self, current_mode, phm):
+        is_applicable = False
+        if (
+            phm == "None"
+            or phm == "input stopped"
+            or phm == "Soft-Hard Puff Deadband"
+            or phm == "Soft-Hard Sip Deadband"
+        ):
+            is_applicable = False
+
+        elif current_mode in [1, 2, 3]:
+            if phm == "Soft Puff" or phm == "Soft Sip":
+                is_applicable = True
+
+        elif phm == "Hard Puff":
+            if current_mode in [1, 2]:
+                is_applicable = True
+            else:
+                is_applicable = False
+
+        elif phm == "Hard Sip":
+            if current_mode in [2, 3]:
+                is_applicable = True
+            else:
+                is_applicable = False
+
+        return is_applicable
+
     def compute_belief_update(self, intent_inference_data):
         self.lock.acquire()
         self.update_current_position(
@@ -167,13 +195,7 @@ class JacoIntentInference(object):
         current_mode = self.robot_discrete_state[-1]
 
         if not self.is_freeze_update:
-            if (
-                current_mode in [1, 2, 3]
-                and phm != "None"
-                and phm != "input stopped"
-                and phm != "Soft-Hard Puff Deadband"
-                and phm != "Soft-Hard Sip Deadband"
-            ):
+            if self._is_bayesian_applicable(current_mode, phm):
                 # do Bayesian update
                 # print('IN BAYESIAN')
                 p_a_s_all_g_response = self.get_prob_a_s_all_g()

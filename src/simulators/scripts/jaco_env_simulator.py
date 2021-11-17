@@ -35,13 +35,14 @@ from envs.jaco_robot_SE3_env import JacoRobotSE3Env
 from disamb_algo.discrete_mi_disamb_algo import DiscreteMIDisambAlgo
 
 from std_msgs.msg import Float32MultiArray
-from std_msgs.msg import MultiArrayDimension, String, Int8
+from std_msgs.msg import MultiArrayDimension, String, Int8, Float32
 from teleop_nodes.msg import InterfaceSignal
 from jaco_teleop.msg import CartVelCmd
 from jaco_pfields_node.srv import ComputeVelocity, ComputeVelocityRequest, ComputeVelocityResponse
 from jaco_pfields_node.srv import ObsDescList, ObsDescListRequest, ObsDescListResponse
 from jaco_pfields_node.srv import GoalPose, GoalPoseRequest, GoalPoseResponse
 from jaco_pfields_node.srv import InitPfields, InitPfieldsRequest, InitPfieldsResponse
+from simulators.msg import State, DiscreteState
 from simulators.srv import InitBelief, InitBeliefRequest, InitBeliefResponse
 from simulators.srv import ResetBelief, ResetBeliefRequest, ResetBeliefResponse
 from simulators.srv import ComputeIntent, ComputeIntentRequest, ComputeIntentResponse
@@ -76,7 +77,7 @@ RAND_DIRECTION_FACTOR = 0.1
 
 
 class Simulator(object):
-    def __init__(self, subject_id, scene="2"):
+    def __init__(self, subject_id, scene="2", start_mode="Y"):
         super(Simulator, self).__init__()
         rospy.init_node("Simulator")
         rospy.on_shutdown(self.shutdown_hook)
@@ -92,9 +93,7 @@ class Simulator(object):
         self.obj_quats = np.array([[0] * 4] * self.num_objs, dtype="f")
 
         self.called_shutdown = False
-        self.shutdown_pub = rospy.Publisher("/shutdown", String, queue_size=1)
-        self.blendvelpub = rospy.Publisher("/j2s7s300_driver/in/cartesian_velocity_finger", CartVelCmd, queue_size=1)
-        self.modepub = rospy.Publisher("/mi/current_mode", Int16, queue_size=1)
+        self._initialize_publishers()
 
         self.mode_msg = Int16()
 
@@ -115,13 +114,6 @@ class Simulator(object):
         self.input_action = {}
         self.input_action["full_control_signal"] = user_vel
         rospy.Subscriber("/user_vel", InterfaceSignal, self.joy_callback)
-
-        self.gridpub = rospy.Publisher("grid_pub", MarkerArray, queue_size=1)
-        self.goalpub = rospy.Publisher("goal_pub", MarkerArray, queue_size=1)
-        self.obspub = rospy.Publisher("obs_pub", MarkerArray, queue_size=1)
-        self.obsthreshpub = rospy.Publisher("obsthresh_pub", MarkerArray, queue_size=1)
-        self.arrowpub = rospy.Publisher("arrow_pub", Marker, queue_size=1)
-        self.uh_arrowpub = rospy.Publisher("uh_pub", Marker, queue_size=1)
 
         # alpha from confidence function parameters
         self.confidence_threshold = 1.05 / len(self.obj_positions)
@@ -198,7 +190,7 @@ class Simulator(object):
         self.env_params["all_mdp_env_params"] = mdp_env_params
         mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
         self.env_params["mdp_list"] = mdp_list
-        self.env_params["start_mode"] = "z"  # or maybe from all 6D
+        self.env_params["start_mode"] = start_mode  # or maybe from all 6D
         self.env_params["num_goals"] = len(self.obj_positions)
         # disamb algo specific params
         self.env_params["spatial_window_half_length"] = 3  # number of cells
@@ -217,7 +209,8 @@ class Simulator(object):
 
         self.disamb_algo = DiscreteMIDisambAlgo(self.env_params, subject_id)
 
-        self.mode_msg.data = DIM_TO_MODE_INDEX[self.env_params["start_mode"]] + 1
+        # map from x,y,z,.... to 1,2,3,...
+        self.mode_msg.data = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
         self.modepub.publish(self.mode_msg)
         # setup all services
         rospy.loginfo("Waiting for jaco_intent inference node")
@@ -461,6 +454,7 @@ class Simulator(object):
                         self.update_goal_pfield_srv(self.update_goal_pfield_request)
                         self.is_autonomy_turn = True
 
+                # end condition check
                 for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
                     if np.linalg.norm(g_position - robot_position) < 0.05:
                         diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
@@ -528,6 +522,41 @@ class Simulator(object):
                         self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="control")
                         self.blendvelpub.publish(self.blend_vel)
 
+            self.robot_discrete_state.discrete_x = robot_discrete_state[0]
+            self.robot_discrete_state.discrete_y = robot_discrete_state[1]
+            self.robot_discrete_state.discrete_z = robot_discrete_state[2]
+            self.robot_discrete_state.discrete_mode = robot_discrete_state[3]
+
+            self.robot_state.header.frame_id = "jaco_simulator"
+            self.robot_state.header.stamp = rospy.Time.now()
+            self.robot_state.current_robot_position.x = robot_position[0]
+            self.robot_state.current_robot_position.y = robot_position[1]
+            self.robot_state.current_robot_position.z = robot_position[2]
+
+            self.robot_state.current_robot_quat.x = robot_orientation[0]
+            self.robot_state.current_robot_quat.y = robot_orientation[1]
+            self.robot_state.current_robot_quat.z = robot_orientation[2]
+            self.robot_state.current_robot_quat.w = robot_orientation[3]
+
+            self.robot_state.current_robot_hand_position.x = robot_hand_position[0]
+            self.robot_state.current_robot_hand_position.y = robot_hand_position[1]
+            self.robot_state.current_robot_hand_position.z = robot_hand_position[2]
+
+            self.robot_state.current_robot_finger_position_1.x = robot_finger_position_1[0]
+            self.robot_state.current_robot_finger_position_1.y = robot_finger_position_1[1]
+            self.robot_state.current_robot_finger_position_1.z = robot_finger_position_1[2]
+
+            self.robot_state.current_robot_finger_position_2.x = robot_finger_position_2[0]
+            self.robot_state.current_robot_finger_position_2.y = robot_finger_position_2[1]
+            self.robot_state.current_robot_finger_position_2.z = robot_finger_position_2[2]
+
+            self.robot_state.current_robot_finger_position_3.x = robot_finger_position_3[0]
+            self.robot_state.current_robot_finger_position_3.y = robot_finger_position_3[1]
+            self.robot_state.current_robot_finger_position_3.z = robot_finger_position_3[2]
+
+            self.robot_state.robot_discrete_state = self.robot_discrete_state
+            self.robot_state_pub.publish(self.robot_state)
+
             # make markers for rvizz
             self.update_goal_array()
             self.update_obstacle_array()
@@ -535,6 +564,7 @@ class Simulator(object):
             self.make_translucent_region()
             self.make_ur_pub(robot_position, autonomy_vel)
             self.make_uh_pub(robot_position, human_vel)
+            # publish robot state
 
             # publish markers
             self.goalpub.publish(self.goal_loc)
@@ -545,6 +575,37 @@ class Simulator(object):
             self.uh_arrowpub.publish(self.uh_arrow)
 
             r.sleep()
+
+    def _initialize_publishers(self):
+        self.shutdown_pub = rospy.Publisher("/shutdown", String, queue_size=1)
+        self.blendvelpub = rospy.Publisher("/j2s7s300_driver/in/cartesian_velocity_finger", CartVelCmd, queue_size=1)
+        self.modepub = rospy.Publisher("/mi/current_mode", Int16, queue_size=1)
+
+        # study publishers
+        self.robot_state_pub = rospy.Publisher("/robot_state", State, queue_size=1)
+        self.human_vel_pub = rospy.Publisher("/human_vel", Float32MultiArray, queue_size=1)
+        self.autonomy_vel_pub = rospy.Publisher("/autonomy_vel", Float32MultiArray, queue_size=1)
+        self.blend_vel_pub = rospy.Publisher("/blend_vel", Float32MultiArray, queue_size=1)
+        self.alpha_pub = rospy.Publisher("/alpha", Float32, queue_size=1)
+        self.turn_indicator_pub = rospy.Publisher("/turn_indicator", String, queue_size=1)
+        self.function_timer_pub = rospy.Publisher("/function_timer", String, queue_size=1)
+        self.has_human_initiated_pub = rospy.Publisher("/has_human_initiated", String, queue_size=1)
+        self.freeze_update_pub = rospy.Publisher("/freeze_update", String, queue_size=1)
+        self.disamb_discrete_state_pub = rospy.Publisher("/disamb_discrete_state", DiscreteState, queue_size=1)
+        self.autonomy_turn_target_pub = rospy.Publisher("/autonomy_turn_target", ContinuousState, queue_size=1)
+        self.argmax_goal_pub = rospy.Publisher("/argmax_goal", String, queue_size=1)
+        self.inferred_goal_pub = rospy.Publisher("/inferred_goal", String, queue_size=1)
+
+        # rviz publisher
+        self.gridpub = rospy.Publisher("grid_pub", MarkerArray, queue_size=1)
+        self.goalpub = rospy.Publisher("goal_pub", MarkerArray, queue_size=1)
+        self.obspub = rospy.Publisher("obs_pub", MarkerArray, queue_size=1)
+        self.obsthreshpub = rospy.Publisher("obsthresh_pub", MarkerArray, queue_size=1)
+        self.arrowpub = rospy.Publisher("arrow_pub", Marker, queue_size=1)
+        self.uh_arrowpub = rospy.Publisher("uh_pub", Marker, queue_size=1)
+
+        self.robot_state = State()
+        self.robot_discrete_state = DiscreteState()
 
     def _get_target_along_line(self, start_point, end_point, R=10.0):
 
@@ -654,6 +715,7 @@ class Simulator(object):
         mdp_env_params["grid_depth"] = GRID_DEPTH
         mdp_env_params["grid_height"] = GRID_HEIGHT
 
+        # for MDP we are treating JACO as a 3D robot.
         mdp_env_params["robot_type"] = CartesianRobotType.R3
         mdp_env_params["mode_set_type"] = ModeSetType.OneD
 
@@ -1124,6 +1186,8 @@ class Simulator(object):
 
 if __name__ == "__main__":
     subject_id = sys.argv[1]
+    scene = sys.argv[2]
+    start_mode = int(sys.argv[3])
     print(type(subject_id))
-    Simulator(subject_id)
+    Simulator(subject_id, scene, start_mode)
     rospy.spin()
