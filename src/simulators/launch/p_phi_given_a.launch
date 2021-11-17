@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<launch>
+
+	<arg name="save" default="false" doc="Set to true if you wanted save bag file of trial"/>
+
+  <!-- record bags -->
+  <!-- bag file name parameters -->
+  <arg name="subject_id" default="test" doc="trial identifier string"/>
+  <arg name="training_mode" default="trans" doc="training_mode for phi given a training"/>
+  
+  <group if="$(arg save)">
+    <include file="$(find simulators)/launch/record.launch">
+      <arg name="bag_prefix" value="$(arg subject_id)$(arg training_mode)_p_phi_given_a"/>
+    </include>    
+  </group>
+
+	<arg name="iteration" default="1" doc="Number of times to display each action within a block"/>
+	<arg name="block" default="6" doc="Number of blocks"/>
+
+	<node pkg="simulators" output="screen" type="p_phi_given_a_simulator.py" name="p_phi_given_a_simulator" args="$(arg iteration) $(arg block) $(arg training_mode)"/>
+
+</launch>

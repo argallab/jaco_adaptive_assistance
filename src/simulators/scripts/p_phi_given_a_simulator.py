@@ -40,11 +40,17 @@ class PPhiGivenASim(object):
                 "c1_down",
                 "c2_down",
             ]
+            # self.training = [
+            #     "hard_puff_training_trans",
+            #     "hard_sip_training_trans",
+            #     "soft_puff_training_trans",
+            #     "soft_sip_training_trans",
+            # ]
             self.training = [
-                "hard_puff_training_trans",
-                "hard_sip_training_trans",
-                "soft_puff_training_trans",
-                "soft_sip_training_trans",
+                "hard_puff_training",
+                "hard_sip_training",
+                "soft_puff_training",
+                "soft_sip_training",
             ]
 
         elif training_mode == "rot":

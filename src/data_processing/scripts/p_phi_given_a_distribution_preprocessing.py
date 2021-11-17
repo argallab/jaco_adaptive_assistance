@@ -20,18 +20,24 @@ from adaptive_assistance_sim_utils import *
 
 
 class DataParser(object):
-    def __init__(self, file_dir):
+    def __init__(self, trans_file_dir, modes_file_dir):
         super(DataParser, self).__init__()
 
-        results_files = os.listdir(file_dir)
-        action_prompt_file = os.path.join(file_dir, "_action_prompt.csv")
-        user_response_file = os.path.join(file_dir, "_user_response.csv")
+        trans_results_files = os.listdir(trans_file_dir)
+        trans_action_prompt_file = os.path.join(trans_file_dir, "_action_prompt.csv")
+        trans_user_response_file = os.path.join(trans_file_dir, "_user_response.csv")
 
-        self.action_prompt_df = self.read_csv_files(action_prompt_file)
-        self.user_response_df = self.read_csv_files(user_response_file)
+        modes_results_files = os.listdir(modes_file_dir)
+        modes_action_prompt_file = os.path.join(modes_file_dir, "_action_prompt.csv")
+        modes_user_response_file = os.path.join(modes_file_dir, "_user_response.csv")
+
+        self.trans_action_prompt_df = self.read_csv_files(trans_action_prompt_file)
+        self.trans_user_response_df = self.read_csv_files(trans_user_response_file)
+
+        self.modes_action_prompt_df = self.read_csv_files(modes_action_prompt_file)
+        self.modes_user_response_df = self.read_csv_files(modes_user_response_file)
 
     def read_csv_files(self, file_path):
-
         df = pd.read_csv(file_path, header=0)
         return df
 
@@ -40,13 +46,16 @@ class PhiGivenAAnalysis(object):
     def __init__(self, args):
 
         self.id = args.id
-        self.file_dir = os.path.join(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "raw_data", self.id + "_p_phi_given_a"
+        self.trans_file_dir = os.path.join(
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "raw_data", self.id + "trans_p_phi_given_a"
         )
-        if not os.path.exists(self.file_dir):
-            os.makedirs(self.file_dir)
+        self.modes_file_dir = os.path.join(
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir)), "raw_data", self.id + "modes_p_phi_given_a"
+        )
+        # if not os.path.exists(self.trans_file_dir):
+        #     os.makedirs(self.trans_file_dir)
 
-        self.data = DataParser(self.file_dir)
+        self.data = DataParser(self.trans_file_dir, self.modes_file_dir)
 
     def get_nearest_time_stamp(self, tq, time_stamp_array):
         """
@@ -99,18 +108,18 @@ class PhiGivenAAnalysis(object):
         down = np.zeros(4)
         right = np.zeros(4)
         left = np.zeros(4)
-        ccw = np.zeros(4)
-        cw = np.zeros(4)
+        forward = np.zeros(4)
+        backward = np.zeros(4)
         mode_r_x = np.zeros(4)
         mode_r_y = np.zeros(4)
-        mode_r_t = np.zeros(4)
+        mode_r_z = np.zeros(4)
         mode_l_x = np.zeros(4)
         mode_l_y = np.zeros(4)
-        mode_l_t = np.zeros(4)
+        mode_l_z = np.zeros(4)
 
         # because there are x2 as many prmpts (the actual command and the empty command after)
         # and 12 total actions, so the remaining is the number of times each action was shown since all shown equally
-        iters_per_action = len(self.data.action_prompt_df) / 24
+        iters_per_action = len(self.data.trans_action_prompt_df) / 24
 
         # dictionary for mapping action prompts to the arrays we want to fill
         ACTION_TO_ARRAY_DICT = {
@@ -118,14 +127,14 @@ class PhiGivenAAnalysis(object):
             "down": down,
             "left": left,
             "right": right,
-            "clockwise": cw,
-            "counterclockwise": ccw,
+            "backward": backward,
+            "forward": forward,
             "mode_switch_right_1": mode_r_x,
             "mode_switch_right_2": mode_r_y,
-            "mode_switch_right_3": mode_r_t,
+            "mode_switch_right_3": mode_r_z,
             "mode_switch_left_1": mode_l_x,
             "mode_switch_left_2": mode_l_y,
-            "mode_switch_left_3": mode_l_t,
+            "mode_switch_left_3": mode_l_z,
         }
 
         # keep dict of lengths, to reduce normalizer if person missed input
@@ -134,8 +143,8 @@ class PhiGivenAAnalysis(object):
             "down": iters_per_action,
             "left": iters_per_action,
             "right": iters_per_action,
-            "clockwise": iters_per_action,
-            "counterclockwise": iters_per_action,
+            "backward": iters_per_action,
+            "forward": iters_per_action,
             "mode_switch_right_1": iters_per_action,
             "mode_switch_right_2": iters_per_action,
             "mode_switch_right_3": iters_per_action,
@@ -144,27 +153,47 @@ class PhiGivenAAnalysis(object):
             "mode_switch_left_3": iters_per_action,
         }
 
-        # for every action prompt, get the user response (if they did respond)
-        for i in range(0, len(self.data.action_prompt_df) - 1, 2):
+        # for every trans action prompt, get the user response (if they did respond)
+        for i in range(0, len(self.data.trans_action_prompt_df) - 1, 2):
 
-            key = self.data.action_prompt_df.at[i, "command"].replace('"', "")
+            key = self.data.trans_action_prompt_df.at[i, "command"].replace('"', "")
 
-            prompt_t_s = self.data.action_prompt_df.at[i, "rosbagTimestamp"]
-            prompt_t_e = self.data.action_prompt_df.at[i + 1, "rosbagTimestamp"]
+            prompt_t_s = self.data.trans_action_prompt_df.at[i, "rosbagTimestamp"]
+            prompt_t_e = self.data.trans_action_prompt_df.at[i + 1, "rosbagTimestamp"]
 
             user_response_block_indices = self.get_user_response_block_indices(
-                prompt_t_s, prompt_t_e, self.data.user_response_df
+                prompt_t_s, prompt_t_e, self.data.trans_user_response_df
             )
 
             if user_response_block_indices != []:  # if they gave a response
                 user_response = int(
-                    self.data.user_response_df["command"][user_response_block_indices].replace('"', "")
+                    self.data.trans_user_response_df["command"][user_response_block_indices].replace('"', "")
                 )
                 ACTION_TO_ARRAY_DICT[key][user_response - 1] += 1
             else:
                 ACTION_TO_ARRAY_NORMALIZER_DICT[key] -= 1
 
-        # normalize
+        # for every mode switch action prompt, get the user response (if they did respond)
+        for i in range(0, len(self.data.modes_action_prompt_df) - 1, 2):
+
+            key = self.data.modes_action_prompt_df.at[i, "command"].replace('"', "")
+
+            prompt_t_s = self.data.modes_action_prompt_df.at[i, "rosbagTimestamp"]
+            prompt_t_e = self.data.modes_action_prompt_df.at[i + 1, "rosbagTimestamp"]
+
+            user_response_block_indices = self.get_user_response_block_indices(
+                prompt_t_s, prompt_t_e, self.data.modes_user_response_df
+            )
+
+            if user_response_block_indices != []:  # if they gave a response
+                user_response = int(
+                    self.data.modes_user_response_df["command"][user_response_block_indices].replace('"', "")
+                )
+                ACTION_TO_ARRAY_DICT[key][user_response - 1] += 1
+            else:
+                ACTION_TO_ARRAY_NORMALIZER_DICT[key] -= 1
+
+        # normalize the dict which contains both trans and modes info. only concerned about performance in trans actions and mode switches in trans modes
         for k, v in ACTION_TO_ARRAY_DICT.items():
             v = v / ACTION_TO_ARRAY_NORMALIZER_DICT[k]
             ACTION_TO_ARRAY_DICT[k] = v
@@ -192,7 +221,7 @@ class PhiGivenAAnalysis(object):
             for action in TRUE_TASK_ACTION_TO_INTERFACE_ACTION_MAP.keys():
                 p_phi_given_a[mode][action] = collections.OrderedDict()
 
-                if mode == 0:
+                if mode == 1:
                     if action == "move_p":
                         prob = probabilities["right"]  # each pf these a 4D array
                     if action == "move_n":
@@ -200,23 +229,23 @@ class PhiGivenAAnalysis(object):
                     if action == "to_mode_r":
                         prob = probabilities["mode_switch_right_1"]
                     if action == "to_mode_l":
-                        prob = probabilities["mode_switch_left_1"]
-                if mode == 1:
+                        prob = probabilities["mode_switch_left_1"]  # not relevant for jaCO MDP
+                if mode == 2:
                     if action == "move_p":
-                        prob = probabilities["up"]
+                        prob = probabilities["forward"]
                     if action == "move_n":
-                        prob = probabilities["down"]
+                        prob = probabilities["backward"]
                     if action == "to_mode_r":
                         prob = probabilities["mode_switch_right_2"]
                     if action == "to_mode_l":
                         prob = probabilities["mode_switch_left_2"]
-                if mode == 2:
+                if mode == 3:
                     if action == "move_p":
-                        prob = probabilities["counterclockwise"]
+                        prob = probabilities["down"]
                     if action == "move_n":
-                        prob = probabilities["clockwise"]
+                        prob = probabilities["up"]
                     if action == "to_mode_r":
-                        prob = probabilities["mode_switch_right_3"]
+                        prob = probabilities["mode_switch_right_3"]  # not relevant for JACO MDP
                     if action == "to_mode_l":
                         prob = probabilities["mode_switch_left_3"]
 

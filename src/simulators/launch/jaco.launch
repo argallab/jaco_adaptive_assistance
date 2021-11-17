@@ -13,7 +13,7 @@
   <!-- bag file name parameters -->
   <group if="$(arg save)">
     <include file="$(find simulators)/launch/record.launch">
-      <arg name="bag_prefix" value="$(arg subject_id)_$(arg assistance_block)_assistance_$(arg block_id)_mode_inference"/>
+      <arg name="bag_prefix" value="$(arg subject_id)_$(arg algo_condition)_condition_$(arg block_id)_mode_inference"/>
     </include>
   </group>
 
@@ -21,7 +21,7 @@
   <arg name="SNP" default="true" doc="Set to true if using sip/puff to control arm."/>
   <arg name="snp_training" default="0" doc="Set to true if snp is used for training"/>
   <node pkg="jaco_pfields_node" output="screen" type="jaco_pfields_multiple_node.py" name="jaco_pfields_multiple_node"/>
-  <node pkg="simulators" output="screen" type="jaco_env_simulator.py" name="jaco_env_simulator"  args="$(arg subject_id) $(arg scene)   $(arg start_mode)"/>
+  <node pkg="simulators" output="screen" type="jaco_env_simulator.py" name="jaco_env_simulator"  args="$(arg subject_id) $(arg scene) $(arg start_mode) $(arg algo_condition)"/>
   <node pkg="jaco_intent_inference" output="screen" type="jaco_intent_inference_node.py" name="jaco_intent_inference_node" args="$(arg subject_id)"/>
   
   
