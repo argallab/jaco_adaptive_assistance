@@ -49,14 +49,14 @@ class PPhiGivenASim(object):
 
         elif training_mode == "rot":
             self.actions = [
-                "c1_bend_up",
-                "c2_bend_up",
-                "c1_bend_down",
-                "c2_bend_down",
-                "c1_angle_left",
-                "c2_angle_left",
-                "c1_angle_right",
-                "c2_angle_right",
+                "c1_bend_left",
+                "c2_bend_left",
+                "c1_bend_right",
+                "c2_bend_right",
+                "c1_angle_up",
+                "c2_angle_up",
+                "c1_angle_down",
+                "c2_angle_down",
                 "c1_rotate_left",
                 "c2_rotate_left",
                 "c1_rotate_right",

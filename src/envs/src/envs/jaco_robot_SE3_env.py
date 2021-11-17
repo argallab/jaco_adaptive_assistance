@@ -132,6 +132,7 @@ class JacoRobotSE3Env(object):
         self.mdp_list = self.env_params["mdp_list"]  # MDP is in x,y,z,m space
 
         self.num_goals = self.env_params["num_goals"]
+        self.robot_type = CartesianRobotType.SE3
 
         # continuous world boundaries
         self.world_bounds = self.env_params["world_bounds"]
@@ -139,7 +140,8 @@ class JacoRobotSE3Env(object):
 
         # starting discrete mode #could be all 6d.
         self.start_mode = self.env_params["start_mode"]  # x,y,z
-        self.current_mode_index = DIM_TO_MODE_INDEX[self.start_mode]  # 0,1,2
+        # self.current_mode_index = DIM_TO_MODE_INDEX[self.start_mode]  # 0,1,2
+        self.current_mode_index = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode]
 
         self.robot = JacoRobotSE3(init_control_mode=self.current_mode_index + 1)
 

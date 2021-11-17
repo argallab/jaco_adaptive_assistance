@@ -88,7 +88,7 @@ CARTESIAN_MODE_SET_OPTIONS = {
         ModeSetType.TwoD: {1: 12, 2: 3},
         ModeSetType.ThreeD: {1: 123},
     },
-    CartesianRobotType.SE3: {ModeSetType.OneD: {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6},},
+    CartesianRobotType.SE3: {ModeSetType.OneD: {1: 1, 2: 2, 3: 3, 4: 5, 5: 4, 6: 6},},
 }
 
 CARTESIAN_DIM_NAMES = {
@@ -96,7 +96,7 @@ CARTESIAN_DIM_NAMES = {
     CartesianRobotType.SE2_NH: ["V", "W"],
     CartesianRobotType.R3: ["X", "Y", "Z"],
     CartesianRobotType.SE2: ["X", "Y", "YAW"],
-    CartesianRobotType.SE3: ["X", "Y", "Z", "ROLL", "PITCH", "YAW"],
+    CartesianRobotType.SE3: ["X", "Y", "Z", "YAW", "PITCH", "ROLL"],
 }
 
 CARTESIAN_DIM_LABELS = {
@@ -104,7 +104,7 @@ CARTESIAN_DIM_LABELS = {
     CartesianRobotType.SE2_NH: {"V": "F/B", "W": "L/R"},
     CartesianRobotType.R3: {"X": "L/R", "Y": "F/B", "Z": "U/D"},
     CartesianRobotType.SE2: {"X": "L/R", "Y": "F/B", "YAW": "YAW"},
-    CartesianRobotType.SE3: {"X": "L/R", "Y": "F/B", "Z": "U/D", "ROLL": "ROLL", "PITCH": "PITCH", "YAW": "YAW"},
+    CartesianRobotType.SE3: {"X": "L/R", "Y": "F/B", "Z": "U/D", "YAW": "YAW", "PITCH": "PITCH", "ROLL": "ROLL"},
 }
 
 CARTESIAN_DIM_TO_CTRL_INDEX_MAP = {
@@ -112,7 +112,7 @@ CARTESIAN_DIM_TO_CTRL_INDEX_MAP = {
     CartesianRobotType.SE2_NH: {"V": 0, "W": 1},
     CartesianRobotType.R3: {"X": 0, "Y": 1, "Z": 2},
     CartesianRobotType.SE2: {"X": 0, "Y": 1, "YAW": 2},
-    CartesianRobotType.SE3: {"X": 0, "Y": 1, "Z": 2, "ROLL": 3, "PITCH": 4, "YAW": 5},
+    CartesianRobotType.SE3: {"X": 0, "Y": 1, "Z": 2, "YAW": 4, "PITCH": 3, "ROLL": 5},
 }
 
 # utility functions
@@ -139,7 +139,7 @@ class JacoRobotSE3(object):
         self.mode_set_type = mode_set_type  # interface dimensionality
         self.mode_transition_type = mode_transition_type  #
 
-        # self.mode_set = {1:1, 2:2, 3:3}
+        # self.mode_set = {1:1, 2:2, 3:3, 4:5, 5:4, 6:6}
         self.mode_set = CARTESIAN_MODE_SET_OPTIONS[self.robot_type][self.mode_set_type]
         self.num_modes = len(self.mode_set)  # 6, no gripper
         self.current_mode = init_control_mode  # 1,2,3 mode id. key in self.mode_set
@@ -251,11 +251,20 @@ class JacoRobotSE3(object):
         for acd, mcd in zip(_allowed_control_dimensions, _mappable_control_dimensions):
             true_velocity[acd] = velocity_action[mcd]
 
-        #flip x,y,z, so that "puff" results in rightward, forwards and downwards movement of the arm. Visually sensible. 
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['X']] = -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['X']]
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Y']] = -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Y']]
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Z']] = -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]['Z']]
-        
+        # flip x,y,z, so that "puff" results in rightward, forwards and downwards movement of the arm. Visually sensible.
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"]] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"]]
+        )
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"]] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"]]
+        )
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"]] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"]]
+        )
+
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]]
+        )
         return true_velocity
 
 

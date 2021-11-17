@@ -77,7 +77,7 @@ RAND_DIRECTION_FACTOR = 0.1
 
 
 class Simulator(object):
-    def __init__(self, subject_id, scene="2", start_mode="Y"):
+    def __init__(self, subject_id, scene="2", start_mode="Y", algo_condition="disamb"):
         super(Simulator, self).__init__()
         rospy.init_node("Simulator")
         rospy.on_shutdown(self.shutdown_hook)
@@ -194,10 +194,11 @@ class Simulator(object):
         self.env_params["num_goals"] = len(self.obj_positions)
         # disamb algo specific params
         self.env_params["spatial_window_half_length"] = 3  # number of cells
-        self.condition = "disamb"
+        self.algo_condition = algo_condition
+        self.env_params["robot_type"] = CartesianRobotType.SE3
         # kl_coeff, num_modes,
-        self.env_params["kl_coeff"] = 0.9
-        self.env_params["dist_coeff"] = 0.1
+        self.env_params["kl_coeff"] = 0.6
+        self.env_params["dist_coeff"] = 0.4
 
         self._init_goal_pfields()
         self._init_other_pfields(pfield_id="disamb")
@@ -384,7 +385,7 @@ class Simulator(object):
 
                 # TODO: determine end condition here?
 
-                if self.condition == "disamb":
+                if self.algo_condition == "disamb":
                     if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD:
                             print("NORMALIZED ENTROPY", normalized_h_of_p_g_given_phm)
@@ -473,7 +474,7 @@ class Simulator(object):
                             self.update_goal_pfield_srv(self.update_goal_pfield_request)
                             self.is_autonomy_turn = True
 
-                elif self.condition == "control":
+                elif self.algo_condition == "control":
                     if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         print("ACTIVATING AUTONOMY")
 
@@ -514,9 +515,9 @@ class Simulator(object):
                             break
             else:
                 # what to do during autonomy turn
-                if self.condition == "disamb":
+                if self.algo_condition == "disamb":
                     self.compute_velocity_request.pfield_id = "disamb"
-                elif self.condition == "control":
+                elif self.algo_condition == "control":
                     self.compute_velocity_request.pfield_id = "generic"
 
                 vel_response = self.compute_velocity_srv(self.compute_velocity_request)
@@ -525,7 +526,7 @@ class Simulator(object):
 
                 self.alpha_msg.data = 1.0  # full autonomy
 
-                if self.condition == "disamb":
+                if self.algo_condition == "disamb":
                     # add condition for timeout when there is clash with pfields velocities
                     if (
                         np.linalg.norm(np.array(robot_position) - np.array(max_disamb_continuous_position)) < 0.05
@@ -549,9 +550,9 @@ class Simulator(object):
                         self.alpha = 1.0
                         # since alpha = 1.0, this will be purely autonomy
                         self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="disamb")
-                        self.blend_vel_msg.data = list(self.blend_vel.velocity.data.velocity)
+                        self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
                         self.blendvelpub.publish(self.blend_vel)
-                elif self.condition == "control":
+                elif self.algo_condition == "control":
                     if (
                         np.linalg.norm(np.array(robot_position) - np.array(target_point)) < 0.05
                         or time.time() - self.autonomy_turn_start_time > self.AUTONOMY_TURN_TIMEOUT
@@ -1250,7 +1251,7 @@ class Simulator(object):
 if __name__ == "__main__":
     subject_id = sys.argv[1]
     scene = sys.argv[2]
-    start_mode = int(sys.argv[3])
-    print(type(subject_id))
-    Simulator(subject_id, scene, start_mode)
+    start_mode = sys.argv[3]
+    algo_condition = sys.argv[4]
+    Simulator(subject_id, scene, start_mode, algo_condition)
     rospy.spin()
