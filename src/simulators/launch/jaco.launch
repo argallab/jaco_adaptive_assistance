@@ -5,6 +5,7 @@
   <arg name="save" default="false" doc="Set to true if you wanted save bag file of trial"/>
 
   <arg name="subject_id" default="test" doc="Unique string identifier for the subject"/>
+  <arg name="trial_id" default="0" doc="Unique string identifier for the scene"/>
   <arg name="scene" default="2" doc="Unique string identifier for the scene"/>
   <arg name="start_mode" default="ROLL" doc="Unique string identifier for the start mode"/>
   <arg name="algo_condition" default="disamb" doc="Unique string identifier for the algo_condition"/>
@@ -13,7 +14,7 @@
   <!-- bag file name parameters -->
   <group if="$(arg save)">
     <include file="$(find simulators)/launch/record.launch">
-      <arg name="bag_prefix" value="$(arg subject_id)_$(arg algo_condition)_condition_$(arg block_id)_mode_inference"/>
+      <arg name="bag_prefix" value="$(arg subject_id)_$(arg algo_condition)_condition_$(arg scene)_scene_$(arg start_mode)_start_mode_$(arg trial_id)_adaptive_assistance"/>
     </include>
   </group>
 

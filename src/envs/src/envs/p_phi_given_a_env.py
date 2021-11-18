@@ -20,7 +20,7 @@ import random
 import threading
 
 
-class PPhiGivenASim(object):
+class PPhiGivenAEnv(object):
     def __init__(self, env_params):
 
         self.viewer = None
@@ -185,10 +185,12 @@ class PPhiGivenASim(object):
         if self.img_prompt != "":
             if not self.start_training:
                 self._render_options()
-            if self.img_prompt in self.motion_actions:
+            # if self.img_prompt in self.motion_actions:
+            #     self._render_sprite(x=VIEWPORT_W / 4, y=VIEWPORT_H / 4, scale=0.2)
+            # if self.img_prompt in self.mode_actions:
+            #     self._render_sprite(x=VIEWPORT_W / 4, y=VIEWPORT_H / 4, scale=0.05)
+            if self.img_prompt in self.action_prompts:
                 self._render_sprite(x=VIEWPORT_W / 4, y=VIEWPORT_H / 4, scale=0.2)
-            if self.img_prompt in self.mode_actions:
-                self._render_sprite(x=VIEWPORT_W / 4, y=VIEWPORT_H / 4, scale=0.05)
             if self.img_prompt in self.training_prompts:
                 self._render_sprite(x=VIEWPORT_W / 8, y=VIEWPORT_H / 8, scale=0.7)
         if self.display_timer:
@@ -223,8 +225,10 @@ class PPhiGivenASim(object):
             else:
                 if self.ready_for_new_prompt:
                     self.img_prompt = self.action_prompts[self.prompt_ind]
+                    print(self.img_prompt)
                     bool_publish = True
                     self._set_image_path()
+                    print(self.file_path)
                     self.ready_for_new_prompt = False
                     self.ready_for_user = True
                     self.display_timer = True
