@@ -4,7 +4,6 @@ roslaunch simulators p_phi_given_a_sim.launch subject_id:=deepak save:=true iter
 roslaunch simulators p_phi_given_a_sim.launch subject_id:=deepak save:=true iteration:=1 block:=4 training_mode:=modes
 
 python extract_topics_from_bag.py BAGFILEtrans SUBJECTIDtrans_p_phi_given_a
-python extract_topics_from_bag.py BAGFILErot SUBJECTIDrot_p_phi_given_a
 python extract_topics_from_bag.py BAGFILEmodes SUBJECTIDmodes_p_phi_given_a
 
 python p_phi_given_a_distribution_preprocessing.py -id SUBJECTID

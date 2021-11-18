@@ -16,7 +16,7 @@ import bisect
 import rospkg
 
 sys.path.append(os.path.join(rospkg.RosPack().get_path("simulators"), "scripts"))
-from adaptive_assistance_sim_utils import *
+from jaco_adaptive_assistance_utils import *
 
 
 class DataParser(object):
@@ -120,8 +120,11 @@ class PhiGivenAAnalysis(object):
         # because there are x2 as many prmpts (the actual command and the empty command after)
         # and 12 total actions, so the remaining is the number of times each action was shown since all shown equally
         iters_per_action = len(self.data.trans_action_prompt_df) / 24
+        print("ITER PER ACTION FOR TRANS", iters_per_action)
+        print("ITER PER ACTION FOR MODES", len(self.data.modes_action_prompt_df) / 24)
 
         # dictionary for mapping action prompts to the arrays we want to fill
+        # TODO update the keys and then later combine fields
         ACTION_TO_ARRAY_DICT = {
             "up": up,
             "down": down,
