@@ -104,12 +104,12 @@ class PhiGivenAAnalysis(object):
         USER_RESPONSE_DICT = {"1": "Hard Puff", "2": "Hard Sip", "3": "Soft Puff", "4": "Soft Sip"}
 
         # hard puff, hard sip, soft puff, soft sip
-        up = np.zeros(4)
-        down = np.zeros(4)
         right = np.zeros(4)
         left = np.zeros(4)
         forward = np.zeros(4)
         backward = np.zeros(4)
+        down = np.zeros(4)
+        up = np.zeros(4)
         mode_r_x = np.zeros(4)
         mode_r_y = np.zeros(4)
         mode_r_z = np.zeros(4)
@@ -126,12 +126,12 @@ class PhiGivenAAnalysis(object):
         # dictionary for mapping action prompts to the arrays we want to fill
         # TODO update the keys and then later combine fields
         ACTION_TO_ARRAY_DICT = {
-            "up": up,
-            "down": down,
-            "left": left,
             "right": right,
-            "backward": backward,
+            "left": left,
             "forward": forward,
+            "backward": backward,
+            "down": down,
+            "up": up,
             "mode_switch_right_1": mode_r_x,
             "mode_switch_right_2": mode_r_y,
             "mode_switch_right_3": mode_r_z,
@@ -142,12 +142,12 @@ class PhiGivenAAnalysis(object):
 
         # keep dict of lengths, to reduce normalizer if person missed input
         ACTION_TO_ARRAY_NORMALIZER_DICT = {
-            "up": iters_per_action,
-            "down": iters_per_action,
-            "left": iters_per_action,
             "right": iters_per_action,
-            "backward": iters_per_action,
+            "left": iters_per_action,
             "forward": iters_per_action,
+            "backward": iters_per_action,
+            "down": iters_per_action,
+            "up": iters_per_action,
             "mode_switch_right_1": iters_per_action,
             "mode_switch_right_2": iters_per_action,
             "mode_switch_right_3": iters_per_action,
@@ -155,6 +155,45 @@ class PhiGivenAAnalysis(object):
             "mode_switch_left_2": iters_per_action,
             "mode_switch_left_3": iters_per_action,
         }
+
+        # change all c2_* to c1_* for ease of parsing in self.data.trans
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c1_right"', "command"
+        ] = '"right"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c1_left"', "command"
+        ] = '"left"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c1_forward"', "command"
+        ] = '"forward"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c1_backward"', "command"
+        ] = '"backward"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c1_down"', "command"
+        ] = '"down"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c1_up"', "command"
+        ] = '"up"'
+
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c2_right"', "command"
+        ] = '"right"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c2_left"', "command"
+        ] = '"left"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c2_forward"', "command"
+        ] = '"forward"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c2_backward"', "command"
+        ] = '"backward"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c2_down"', "command"
+        ] = '"down"'
+        self.data.trans_action_prompt_df.loc[
+            self.data.trans_action_prompt_df["command"] == '"c2_up"', "command"
+        ] = '"up"'
 
         # for every trans action prompt, get the user response (if they did respond)
         for i in range(0, len(self.data.trans_action_prompt_df) - 1, 2):
@@ -180,6 +219,15 @@ class PhiGivenAAnalysis(object):
         for i in range(0, len(self.data.modes_action_prompt_df) - 1, 2):
 
             key = self.data.modes_action_prompt_df.at[i, "command"].replace('"', "")
+            if key not in [
+                "mode_switch_right_1",
+                "mode_switch_right_2",
+                "mode_switch_right_3",
+                "mode_switch_left_1",
+                "mode_switch_left_2",
+                "mode_switch_left_3",
+            ]:
+                continue
 
             prompt_t_s = self.data.modes_action_prompt_df.at[i, "rosbagTimestamp"]
             prompt_t_e = self.data.modes_action_prompt_df.at[i + 1, "rosbagTimestamp"]
@@ -272,8 +320,10 @@ class PhiGivenAAnalysis(object):
             print("NEEEEDS MORE TRAINING", max(list_of_all_diff_norms))
 
         personalized_distributions_dir = os.path.join(
-            rospkg.RosPack().get_path("inference_engine"), "personalized_distributions"
+            rospkg.RosPack().get_path("jaco_intent_inference"), "personalized_distributions"
         )
+        if not os.path.exists(personalized_distributions_dir):
+            os.makedirs(personalized_distributions_dir)
         pickle.dump(
             p_phi_given_a, open(os.path.join(personalized_distributions_dir, self.id + "_p_phi_given_a.pkl"), "wb")
         )
