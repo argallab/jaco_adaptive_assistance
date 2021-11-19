@@ -25,7 +25,7 @@ class JacoPfields(object):
         # obstacles orientations (list of 4D quats)
         self.goal_position = npa([0] * 3, dtype="f")
         self.goal_quat = npa([0] * 4, dtype="f")
-        self.num_dof = 9
+        self.num_dof = 9  # remove hard coding, use Enums
 
         # self.buffer = tf2_ros.Buffer()  # needed for self.collision and table checks. For any pfield that uses jaco
 

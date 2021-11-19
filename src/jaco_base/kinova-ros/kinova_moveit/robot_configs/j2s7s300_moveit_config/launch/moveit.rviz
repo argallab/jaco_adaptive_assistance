@@ -6,6 +6,8 @@ Panels:
       Expanded:
         - /MarkerArray1
         - /MarkerArray2
+        - /MarkerArray3
+        - /MarkerArray4
       Splitter Ratio: 0.7425600290298462
     Tree Height: 328
   - Class: rviz/Help
@@ -303,6 +305,22 @@ Visualization Manager:
         jaco_env_simulator: true
       Queue Size: 100
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /grid_pub
+      Name: MarkerArray
+      Namespaces:
+        jaco_env_simulator: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /obsthresh_pub
+      Name: MarkerArray
+      Namespaces:
+        jaco_env_simulator: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -334,10 +352,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.14979705214500427
+      Pitch: 0.6047970056533813
       Target Frame: root
       Value: XYOrbit (rviz)
-      Yaw: 0.006755352020263672
+      Yaw: 0.6017557382583618
     Saved: ~
 Window Geometry:
   Displays:

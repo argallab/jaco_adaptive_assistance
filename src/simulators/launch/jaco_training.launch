@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <arg name="save" default="false" doc="Set to true if you wanted save bag file of trial"/>
+
+  <arg name="subject_id" default="test" doc="Unique string identifier for the subject"/>
+  <arg name="trial_id" default="0" doc="Unique string identifier for the scene"/>
+  <arg name="scene" default="2" doc="Unique string identifier for the scene"/>
+  <arg name="start_mode" default="ROLL" doc="Unique string identifier for the start mode"/>
+  <arg name="blend_mode" default="teleop" doc="Unique string identifier for the blend_mode"/>
+  
+  <!-- record bags -->
+  <!-- bag file name parameters -->
+  <group if="$(arg save)">
+    <include file="$(find simulators)/launch/record.launch">
+      <arg name="bag_prefix" value="$(arg subject_id)_$(arg blend_mode)_condition_$(arg scene)_scene_$(arg start_mode)_start_mode_$(arg trial_id)_adaptive_assistance"/>
+    </include>
+  </group>
+
+  
+  <arg name="SNP" default="true" doc="Set to true if using sip/puff to control arm."/>
+  <arg name="snp_training" default="0" doc="Set to true if snp is used for training"/>
+  <node pkg="jaco_pfields_node" output="screen" type="jaco_pfields_multiple_node.py" name="jaco_pfields_multiple_node"/>
+  <node pkg="simulators" output="screen" type="jaco_env_simulator_training.py" name="jaco_env_simulator_training"  args="$(arg subject_id) $(arg scene) $(arg start_mode) $(arg blend_mode)"/>
+  <node pkg="jaco_intent_inference" output="screen" type="jaco_intent_inference_node.py" name="jaco_intent_inference_node" args="$(arg subject_id)"/>
+  
+  
+  <include file="$(find teleop_nodes)/launch/teleop_nodes.launch">
+    <arg name="SNP" value="$(arg SNP)"/>
+    <arg name="snp_training" value="$(arg snp_training)"/>
+  </include>
+
+</launch>

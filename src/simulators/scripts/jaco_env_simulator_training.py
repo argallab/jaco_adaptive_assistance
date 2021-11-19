@@ -1,32 +1,5 @@
 #!/usr/bin/env python
 
-# functions like the blend node
-# maintains an environment class instance:
-# # encapsulates where the objects and obstacles are in the world.
-# # maintains robot state class?
-# # can get the robot contiuous pose from the class.
-# # if disamb is triggered.
-# # grab the current position and convert to discrete state (encoding only position and mode)
-# run disamb in 4D trans + mode space. Get the new location . Move robot to that position. Switch mode to one of the
-# reset the DFT procedure.
-# subscribes to interface_signal/convert to user_vel in full 6D
-# subscribes to autonomy_vel
-# blends velocities
-# instead of calling step function, will publish blended vel on /control_input topic like the blend node.
-
-# can update dft inference upon receiving user_vel.
-# if disamb is activated. grab the current belief from DFT. Freeze it.
-# Use the translation MDP for disamb. Goals are purely in translation space.
-
-
-# InferenceEngine:  Does DFT. Can be triggered from the sim class after u_h has been computed via service. As opposed to directly from teleop class.
-# DisambAlgo: Uses MDP description for characterizing nearby discrete states.
-# MDP: MDPDescription of the 3D + Mode space - DONE
-# Pfields_Node: with multi support avoidance
-# Avoidance module: ? Takes current positions, goal, obstacles and computes the net autonomy vel.
-# Teleop: New one, that emits interface signal - DONE
-# ENV: Encapsulator - DONE
-
 import collections
 import rospy
 import time
@@ -77,7 +50,7 @@ RAND_DIRECTION_FACTOR = 0.1
 
 
 class Simulator(object):
-    def __init__(self, subject_id, scene="2", start_mode="Y", algo_condition="disamb"):
+    def __init__(self, subject_id, scene="2", start_mode="Y", blend_mode="teleop"):
         super(Simulator, self).__init__()
         rospy.init_node("Simulator")
         rospy.on_shutdown(self.shutdown_hook)
@@ -126,9 +99,6 @@ class Simulator(object):
         else:
             self.confidence_slope = -1.0
 
-        self.ENTROPY_THRESHOLD = 0.65
-        self.AUTONOMY_TURN_TIMEOUT = 8  # in secs
-        self.autonomy_turn_start_time = 0.0
         self.current_inferred_goal_id = 0
         self.subject_id = subject_id
 
@@ -136,11 +106,6 @@ class Simulator(object):
         self.cylinder_h = 0.4
 
         self.obs_threshold = 0.12
-        self.grid_loc = MarkerArray()
-        self.goal_loc = MarkerArray()
-        self.obs_loc = MarkerArray()
-        self.vel_arrow = Marker()  # make a pose
-        self.uh_arrow = Marker()
 
         self._init_obj_positions()
 
@@ -188,7 +153,6 @@ class Simulator(object):
         self.env_params["world_bounds"] = self.world_bounds
 
         mdp_env_params = self._create_mdp_env_param_dict()
-
         self.env_params["all_mdp_env_params"] = mdp_env_params
         mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
         self.env_params["mdp_list"] = mdp_list
@@ -196,25 +160,22 @@ class Simulator(object):
         self.env_params["num_goals"] = len(self.obj_positions)
         # disamb algo specific params
         self.env_params["spatial_window_half_length"] = 3  # number of cells
-        self.algo_condition = algo_condition
+        self.blend_mode = blend_mode
         self.env_params["robot_type"] = CartesianRobotType.SE3
         # kl_coeff, num_modes,
         self.env_params["kl_coeff"] = 0.6
         self.env_params["dist_coeff"] = 0.4
 
         self._init_goal_pfields()
-        self._init_other_pfields(pfield_id="disamb")
-        self._init_other_pfields(pfield_id="generic")
 
         self.env = JacoRobotSE3Env(self.env_params)
         # self.env.initialize()
         self.env.reset()
 
-        self.disamb_algo = DiscreteMIDisambAlgo(self.env_params, subject_id)
-
         # map from x,y,z,.... to 1,2,3,...
         self.mode_msg.data = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
         self.modepub.publish(self.mode_msg)
+
         # setup all services
         rospy.loginfo("Waiting for jaco_intent inference node")
         rospy.wait_for_service("/jaco_intent_inference/init_belief")
@@ -247,12 +208,7 @@ class Simulator(object):
         self.freeze_update_request = SetBoolRequest()
 
         self._init_goal_locations_in_inference()
-
         r = rospy.Rate(100)
-        self.is_autonomy_turn = False
-        self.has_human_initiated = False
-        self.autonomy_activate_ctr = 0
-        self.DISAMB_ACTIVATE_THRESHOLD = 100
         is_done = False
         while not rospy.is_shutdown():
             if is_done:
@@ -267,6 +223,7 @@ class Simulator(object):
                 robot_finger_position_2,
                 robot_finger_position_3,
             ) = self.env.get_robot_finger_positions()
+
             robot_discrete_state = self.env.get_robot_current_discrete_state()  # (x,y,z,m) with m in [1,2,3,4,5,6]
             current_mode = robot_discrete_state[-1]  # [1,2,3,4,5,6]
             self.mode_msg.data = current_mode
@@ -275,6 +232,7 @@ class Simulator(object):
             is_mode_switch = self.input_action["human"].mode_switch
 
             self.human_vel_msg.data = list(human_vel)
+
             # prepare srv request for belief update
             self.compute_intent_request.robot_pose.position.x = robot_position[0]
             self.compute_intent_request.robot_pose.position.y = robot_position[1]
@@ -330,252 +288,61 @@ class Simulator(object):
             ii_response = self.compute_intent_srv(self.compute_intent_request)
             # retrieve current belief
             self.current_p_g_given_uh = np.array(self.query_belief_srv(self.query_belief_request).current_p_g_given_uh)
-
-            if not self.is_autonomy_turn:
-                # get argmax for most confident goal
-                (
-                    inferred_goal_id_str,
-                    inferred_goal_id,
-                    inferred_goal_prob,
-                    normalized_h_of_p_g_given_phm,
-                    argmax_goal_id,
-                    argmax_goal_id_str,
-                ) = self._get_most_confident_goal()
-                # if autonomy inferred a valid goal, then set alpha accordingly
-                if inferred_goal_id_str is not None and inferred_goal_prob is not None:
-                    self.current_inferred_goal_id = inferred_goal_id
-                    self.compute_velocity_request.pfield_id = inferred_goal_id_str
-                    vel_response = self.compute_velocity_srv(self.compute_velocity_request)
-                    autonomy_vel = list(vel_response.velocity_final)
-                    inferred_goal_position = self.obj_positions[inferred_goal_id]
-                    # dist_weight = self._dist_based_weight(inferred_goal_position, robot_position)
+            # get argmax for most confident goal
+            (
+                inferred_goal_id_str,
+                inferred_goal_id,
+                inferred_goal_prob,
+                normalized_h_of_p_g_given_phm,
+                argmax_goal_id,
+                argmax_goal_id_str,
+            ) = self._get_most_confident_goal()
+            # if autonomy inferred a valid goal, then set alpha accordingly
+            if inferred_goal_id_str is not None and inferred_goal_prob is not None:
+                self.current_inferred_goal_id = inferred_goal_id
+                self.compute_velocity_request.pfield_id = inferred_goal_id_str
+                vel_response = self.compute_velocity_srv(self.compute_velocity_request)
+                autonomy_vel = list(vel_response.velocity_final)
+                inferred_goal_position = self.obj_positions[inferred_goal_id]
+                # dist_weight = self._dist_based_weight(inferred_goal_position, robot_position)
+                if self.blend_mode == "blending":
                     self.alpha = self._compute_alpha(inferred_goal_prob)
                     self.inferred_goal_pub.publish(inferred_goal_id_str)
-                else:
+                elif self.blend_mode == "teleop":
                     # no confident goal, therefore keep autonomy vel to be 0.0 and alpha to be 0.0. Purely human vel
                     autonomy_vel = list([0.0] * np.array(human_vel).shape[0])  # 0.0 autonomy vel
                     self.alpha = 0.0  # no autonomy, purely human vel
                     self.inferred_goal_pub.publish("None")
 
-                # blend velocities
-                # print('ALPHA ', self.alpha)
-                self.autonomy_vel_msg.data = list(autonomy_vel)
-                self._blend_velocities(np.array(human_vel), np.array(autonomy_vel))
-                self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
-                self.alpha_msg.data = self.alpha
-
-                if np.linalg.norm(np.array(human_vel)) < 1e-5 and is_mode_switch == False:
-                    if self.has_human_initiated:
-                        # zero human vel and human has already issued some non-zero velocities during their turn,
-                        # in which case keep track of inactivity time
-                        self.autonomy_activate_ctr += 1
-                        # print("ACTIVATE AUTONOM CTR", self.autonomy_activate_ctr)
-                else:
-                    if not self.has_human_initiated:
-                        print("HUMAN INITIATED DURING THEIR TURN")
-                        self.has_human_initiated = True
-                        self.has_human_initiated_pub.publish("initiated")
-
-                        # unfreeze belief update
-                        self.freeze_update_request.data = False
-                        self.freeze_update_srv(self.freeze_update_request)
-                        self.freeze_update_pub.publish("Unfrozen")
-                    # reset the activate ctr because human is providing nonzro commands
-                    self.autonomy_activate_ctr = 0
-
-                self.blendvelpub.publish(self.blend_vel)
-
-                # TODO: determine end condition here?
-
-                if self.algo_condition == "disamb":
-                    if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
-                        if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD:
-                            print("NORMALIZED ENTROPY", normalized_h_of_p_g_given_phm)
-                            print("ACTIVATING DISAMB")
-                            self.turn_indicator_pub.publish("autonomy-disamb")
-                            self.freeze_update_request.data = True
-                            self.freeze_update_srv(self.freeze_update_request)
-                            self.freeze_update_pub.publish("Frozen")
-                            belief_at_disamb_time = self.current_p_g_given_uh
-                            self.function_timer_pub.publish("before")
-                            max_disamb_state = self.disamb_algo.get_local_disamb_state(
-                                belief_at_disamb_time, robot_discrete_state
-                            )
-                            print("CURRENT_DISCRETE STATE", robot_discrete_state, robot_position, robot_orientation)
-                            print("MAX_DISAMB STATE", max_disamb_state)
-                            self.disamb_discrete_state_msg.discrete_x = max_disamb_state[0]
-                            self.disamb_discrete_state_msg.discrete_y = max_disamb_state[1]
-                            self.disamb_discrete_state_msg.discrete_z = max_disamb_state[2]
-                            self.disamb_discrete_state_msg.discrete_mode = max_disamb_state[3]
-
-                            (max_disamb_continuous_position, _) = self._convert_discrete_state_to_continuous_position(
-                                max_disamb_state, mdp_env_params["cell_size"], self.world_bounds
-                            )
-
-                            self.autonomy_turn_target_msg.robot_position.x = max_disamb_continuous_position[0]
-                            self.autonomy_turn_target_msg.robot_position.y = max_disamb_continuous_position[1]
-                            self.autonomy_turn_target_msg.robot_position.z = max_disamb_continuous_position[2]
-                            self.autonomy_turn_target_msg.robot_quat.x = robot_orientation[0]
-                            self.autonomy_turn_target_msg.robot_quat.y = robot_orientation[1]
-                            self.autonomy_turn_target_msg.robot_quat.z = robot_orientation[2]
-                            self.autonomy_turn_target_msg.robot_quat.w = robot_orientation[3]
-
-                            self.disamb_discrete_state_pub.publish(self.disamb_discrete_state_msg)
-                            self.autonomy_turn_target_pub.publish(self.autonomy_turn_target_msg)
-                            self.function_timer_pub.publish("after")
-
-                            self.update_goal_pfield_request.pfield_id = "disamb"
-                            self.update_goal_pfield_request.goal_position.x = max_disamb_continuous_position[0]
-                            self.update_goal_pfield_request.goal_position.y = max_disamb_continuous_position[1]
-                            self.update_goal_pfield_request.goal_position.z = max_disamb_continuous_position[2]
-                            self.update_goal_pfield_request.goal_orientation.x = robot_orientation[0]
-                            self.update_goal_pfield_request.goal_orientation.y = robot_orientation[1]
-                            self.update_goal_pfield_request.goal_orientation.z = robot_orientation[2]
-                            self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
-                            self.update_goal_pfield_srv(self.update_goal_pfield_request)
-
-                            self.is_autonomy_turn = True
-                            self.autonomy_turn_start_time = time.time()
-                            disamb_state_mode_index = max_disamb_state[-1]
-                            if disamb_state_mode_index != robot_discrete_state[-1]:
-                                pass
-                            self.env.set_mode_in_robot(disamb_state_mode_index)
-                        else:
-                            # human has stopped. autonomy' turn. Upon waiting, the confidence is still high. Therefore, move the robot to current confident goal.
-                            print("ACTIVATING AUTONOMY")
-                            self.turn_indicator_pub.publish("autonomy-pfield")
-                            self.freeze_update_request.data = True
-                            self.freeze_update_srv(self.freeze_update_request)
-                            self.freeze_update_pub.publish("Frozen")
-                            belief_at_disamb_time = self.current_p_g_given_uh
-                            inferred_goal_position = self.obj_positions[inferred_goal_id]
-                            # inferred_goal_pose = self.obj_positions[inferred_goal_id]
-                            self.function_timer_pub.publish("before")
-                            target_point = self._get_target_along_line(robot_position, inferred_goal_position)
-                            max_disamb_continuous_position = target_point
-
-                            self.autonomy_turn_target_msg.robot_position.x = target_point[0]
-                            self.autonomy_turn_target_msg.robot_position.y = target_point[1]
-                            self.autonomy_turn_target_msg.robot_position.z = target_point[2]
-                            self.autonomy_turn_target_msg.robot_quat.x = robot_orientation[0]
-                            self.autonomy_turn_target_msg.robot_quat.y = robot_orientation[1]
-                            self.autonomy_turn_target_msg.robot_quat.z = robot_orientation[2]
-                            self.autonomy_turn_target_msg.robot_quat.w = robot_orientation[3]
-                            self.autonomy_turn_start_time = time.time()
-                            self.autonomy_turn_target_pub.publish(self.autonomy_turn_target_msg)
-                            self.function_timer_pub.publish("after")
-
-                            self.update_goal_pfield_request.pfield_id = "disamb"
-                            self.update_goal_pfield_request.goal_position.x = target_point[0]
-                            self.update_goal_pfield_request.goal_position.y = target_point[1]
-                            self.update_goal_pfield_request.goal_position.z = target_point[2]
-                            self.update_goal_pfield_request.goal_orientation.x = robot_orientation[0]
-                            self.update_goal_pfield_request.goal_orientation.y = robot_orientation[1]
-                            self.update_goal_pfield_request.goal_orientation.z = robot_orientation[2]
-                            self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
-                            self.update_goal_pfield_srv(self.update_goal_pfield_request)
-                            self.is_autonomy_turn = True
-
-                elif self.algo_condition == "control":
-                    if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
-                        print("ACTIVATING AUTONOMY")
-
-                        self.turn_indicator_pub.publish("autonomy-control")
-                        self.freeze_update_request.data = True
-                        self.freeze_update_srv(self.freeze_update_request)
-                        self.freeze_update_pub.publish("Frozen")
-
-                        belief_at_disamb_time = self.current_p_g_given_uh
-                        argmax_goal_position = self.obj_positions[argmax_goal_id]
-                        self.argmax_goal_pub.publish(argmax_goal_id_str)
-                        target_point = self._get_target_along_line(robot_position, argmax_goal_position)
-                        self.autonomy_turn_start_time = time.time()
-                        self.update_goal_pfield_request.pfield_id = "generic"
-                        self.update_goal_pfield_request.goal_position.x = target_point[0]
-                        self.update_goal_pfield_request.goal_position.y = target_point[1]
-                        self.update_goal_pfield_request.goal_position.z = target_point[2]
-                        self.update_goal_pfield_request.goal_orientation.x = robot_orientation[0]
-                        self.update_goal_pfield_request.goal_orientation.y = robot_orientation[1]
-                        self.update_goal_pfield_request.goal_orientation.z = robot_orientation[2]
-                        self.update_goal_pfield_request.goal_orientation.w = robot_orientation[3]
-                        self.update_goal_pfield_srv(self.update_goal_pfield_request)
-                        self.is_autonomy_turn = True
-
-                # end condition check
-                for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
-                    if np.linalg.norm(g_position - robot_position) < 0.05:
-                        diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
-                        diff_quat = diff_quat / np.linalg.norm(diff_quat)  # normalize
-                        theta_to_goal = 2 * math.acos(diff_quat[3])  # 0 to 2pi. only rotation in one direction.
-                        if theta_to_goal > math.pi:  # wrap angle
-                            theta_to_goal -= 2 * math.pi
-                            theta_to_goal = abs(theta_to_goal)
-                            diff_quat = -diff_quat
-
-                        if abs(theta_to_goal) < 0.06 and self.has_human_initiated:
-                            is_done = True
-                            break
             else:
-                # what to do during autonomy turn
-                if self.algo_condition == "disamb":
-                    self.compute_velocity_request.pfield_id = "disamb"
-                elif self.algo_condition == "control":
-                    self.compute_velocity_request.pfield_id = "generic"
+                # no confident goal, therefore keep autonomy vel to be 0.0 and alpha to be 0.0. Purely human vel
+                autonomy_vel = list([0.0] * np.array(human_vel).shape[0])  # 0.0 autonomy vel
+                self.alpha = 0.0  # no autonomy, purely human vel
+                self.inferred_goal_pub.publish("None")
 
-                vel_response = self.compute_velocity_srv(self.compute_velocity_request)
-                autonomy_vel = list(vel_response.velocity_final)
-                self.autonomy_vel_msg.data = list(autonomy_vel)
+            # blend velocities
+            # print('ALPHA ', self.alpha)
+            self.autonomy_vel_msg.data = list(autonomy_vel)
+            self._blend_velocities(np.array(human_vel), np.array(autonomy_vel))
+            self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
+            self.alpha_msg.data = self.alpha
 
-                self.alpha_msg.data = 1.0  # full autonomy
+            self.blendvelpub.publish(self.blend_vel)
 
-                if self.algo_condition == "disamb":
-                    # add condition for timeout when there is clash with pfields velocities
-                    if (
-                        np.linalg.norm(np.array(robot_position) - np.array(max_disamb_continuous_position)) < 0.05
-                        or time.time() - self.autonomy_turn_start_time > self.AUTONOMY_TURN_TIMEOUT
-                    ):
-                        print("DONE WITH DISAMB PHASE")
-                        # reset belief to what it was when the disamb mode was activated.
-                        print("RESET BELIEF")
+            # end condition check
+            for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
+                if np.linalg.norm(g_position - robot_position) < 0.05:
+                    diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
+                    diff_quat = diff_quat / np.linalg.norm(diff_quat)  # normalize
+                    theta_to_goal = 2 * math.acos(diff_quat[3])  # 0 to 2pi. only rotation in one direction.
+                    if theta_to_goal > math.pi:  # wrap angle
+                        theta_to_goal -= 2 * math.pi
+                        theta_to_goal = abs(theta_to_goal)
+                        diff_quat = -diff_quat
 
-                        self.reset_belief_request.num_goals = len(self.obj_positions)
-                        self.reset_belief_request.p_g_given_uh = list(belief_at_disamb_time)
-                        self.reset_belief_srv(self.reset_belief_request)
-
-                        self.is_autonomy_turn = False
-                        self.has_human_initiated = False
-                        self.turn_indicator_pub.publish("human")
-                        self.autonomy_activate_ctr = 0
-                        self.autonomy_turn_start_time = 0.0
-                    else:
-                        # print("AUTONOMY VEL", autonomy_vel)
-                        self.alpha = 1.0
-                        # since alpha = 1.0, this will be purely autonomy
-                        self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="disamb")
-                        self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
-                        self.blendvelpub.publish(self.blend_vel)
-                elif self.algo_condition == "control":
-                    if (
-                        np.linalg.norm(np.array(robot_position) - np.array(target_point)) < 0.05
-                        or time.time() - self.autonomy_turn_start_time > self.AUTONOMY_TURN_TIMEOUT
-                    ):
-                        print("DONE WITH AUTONOMY PHASE")
-                        print("RESET BELIEF")
-
-                        self.reset_belief_request.num_goals = len(self.obj_positions)
-                        self.reset_belief_request.p_g_given_uh = list(belief_at_disamb_time)
-                        self.reset_belief_srv(self.reset_belief_request)
-
-                        self.is_autonomy_turn = False
-                        self.has_human_initiated = False
-                        self.turn_indicator_pub.publish("human")
-                        self.autonomy_activate_ctr = 0
-                        self.autonomy_turn_start_time = 0.0
-                    else:
-                        self.alpha = 1.0
-                        self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="control")
-                        self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
-                        self.blendvelpub.publish(self.blend_vel)
+                    if abs(theta_to_goal) < 0.06:
+                        is_done = True
+                        break
 
             # populate robot state for publication
             self.robot_discrete_state.discrete_x = robot_discrete_state[0]
@@ -690,7 +457,7 @@ class Simulator(object):
         x_coord = discrete_state[0]
         y_coord = discrete_state[1]
         z_coord = discrete_state[2]
-        mode = discrete_state[3] - 1
+        mode = discrete_state[3] - 1  # 0,1,2
 
         robot_position = [
             x_coord * cell_size["x"] + cell_size["x"] / 2.0 + world_bounds["xrange"]["lb"],
@@ -819,45 +586,6 @@ class Simulator(object):
         mdp_env_params["dynamic_obs_specs"] = dynamics_obs_specs
 
         return mdp_env_params
-
-    def _init_other_pfields(self, pfield_id):
-
-        self.init_obstacles_request.num_obstacles = len(self.obj_positions)
-        self.init_obstacles_request.obs_descs = []
-        self.init_obstacles_request.pfield_id = pfield_id
-        for (obj_position, obj_quat) in zip(self.obj_positions, self.obj_quats):
-            obs_desc = ObsDesc()
-            obs_desc.position.x = obj_position[0]
-            obs_desc.position.y = obj_position[1]
-            obs_desc.position.z = obj_position[2]
-
-            obs_desc.orientation.x = obj_quat[0]
-            obs_desc.orientation.y = obj_quat[1]
-            obs_desc.orientation.z = obj_quat[2]
-            obs_desc.orientation.w = obj_quat[3]
-
-            self.init_obstacles_request.obs_descs.append(obs_desc)
-
-        assert len(self.init_obstacles_request.obs_descs) == self.init_obstacles_request.num_obstacles
-        # update obstacle list for pfield_id
-        self.init_obstacles_srv(self.init_obstacles_request)
-
-        # update dummy goal info for pfield_id. Will be updated after each disamb turn
-        goal_position = self.obj_positions[0]
-        goal_quat = self.obj_quats[0]
-        self.init_goal_pfield_request.pfield_id = pfield_id
-        self.init_goal_pfield_request.goal_position.x = goal_position[0]
-        self.init_goal_pfield_request.goal_position.y = goal_position[1]
-        self.init_goal_pfield_request.goal_position.z = goal_position[2]
-        self.init_goal_pfield_request.goal_orientation.x = goal_quat[0]
-        self.init_goal_pfield_request.goal_orientation.y = goal_quat[1]
-        self.init_goal_pfield_request.goal_orientation.z = goal_quat[2]
-        self.init_goal_pfield_request.goal_orientation.w = goal_quat[3]
-        self.init_goal_pfield_srv(self.init_goal_pfield_request)
-
-        # initialize the pfield for pfield_id
-        self.init_pfields_request.pfield_id = pfield_id
-        self.init_pfields_srv(self.init_pfields_request)
 
     def _get_most_confident_goal(self):
         p_g_given_uh_vector = self.current_p_g_given_uh + np.finfo(self.current_p_g_given_uh.dtype).tiny
@@ -1286,6 +1014,6 @@ if __name__ == "__main__":
     subject_id = sys.argv[1]
     scene = sys.argv[2]
     start_mode = sys.argv[3]
-    algo_condition = sys.argv[4]
-    Simulator(subject_id, scene, start_mode, algo_condition)
+    blend_mode = sys.argv[4]
+    Simulator(subject_id, scene, start_mode, blend_mode)
     rospy.spin()
