@@ -99,6 +99,8 @@ class Simulator(object):
         else:
             self.confidence_slope = -1.0
 
+        self.ENTROPY_THRESHOLD = 0.65
+
         self.current_inferred_goal_id = 0
         self.subject_id = subject_id
 
@@ -106,7 +108,11 @@ class Simulator(object):
         self.cylinder_h = 0.4
 
         self.obs_threshold = 0.12
-
+        self.grid_loc = MarkerArray()
+        self.goal_loc = MarkerArray()
+        self.obs_loc = MarkerArray()
+        self.vel_arrow = Marker()  # make a pose
+        self.uh_arrow = Marker()
         self._init_obj_positions()
 
         self.env_params = None
@@ -392,7 +398,7 @@ class Simulator(object):
             self.make_translucent_region()
             self.make_ur_pub(robot_position, autonomy_vel)
             self.make_uh_pub(robot_position, human_vel)
-            # publish robot state
+            # publish robot state   
 
             # publish markers
             self.goalpub.publish(self.goal_loc)

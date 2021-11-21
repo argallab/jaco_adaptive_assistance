@@ -41,3 +41,16 @@ roslaunch simulators continuous_world_SE2_sim.launch subject_id:=andrewtest algo
 roslaunch simulators continuous_world_SE2_sim.launch subject_id:=andrewtest algo_condition_block:=disamb block_id:=1 save:=true
 roslaunch simulators continuous_world_SE2_sim.launch subject_id:=andrewtest algo_condition_block:=disamb block_id:=3 save:=true
 roslaunch simulators continuous_world_SE2_sim.launch subject_id:=andrewtest algo_condition_block:=control block_id:=2 save:=true
+
+SCENE 4
+DISAMB
+roslaunch simulators jaco.launch subject_id:=deepak algo_condition:=disamb save:=false scene:=4 start_mode:=X trial_id:=0
+
+SCENE 4
+control
+
+SCENE 5
+DISAMB 
+
+SCENE 6
+CONTROL
