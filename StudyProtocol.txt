@@ -21,10 +21,12 @@ Prompted testing
 roslaunch simulators p_phm_given_phi_sim.launch subject_id:=andrewtest save:=true
 cd src/data_processing/scripts ./generate_personalized_distributions_from_bags.sh andrewtest
 
-
+RUN JACO_BASE
+RUN STOP FORCE CONTROL
 
 training with just teleop
-roslaunch simulators continuous_world_SE2_sim_training.launch subject_id:=train algo_condition_block:=teleop
+roslaunch simulators jaco_training.launch subject_id:=test blend_mode:=teleop save:=false scene:=2 start_mode:=YAW trial_id:=0
+
 
 training with blending
 roslaunch simulators continuous_world_SE2_sim_training.launch subject_id:=train algo_condition_block:=blending 

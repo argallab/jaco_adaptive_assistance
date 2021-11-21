@@ -139,11 +139,14 @@ class JacoRobotSE3Env(object):
         self._create_kd_tree_locations()
 
         # starting discrete mode #could be all 6d.
-        self.start_mode = self.env_params["start_mode"]  # x,y,z
+        self.start_mode = self.env_params["start_mode"]  # X,Y,Z,YAW,PITCH,ROLL
         # self.current_mode_index = DIM_TO_MODE_INDEX[self.start_mode]  # 0,1,2
+        # starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode] + 1
+        # self.current_mode_index = CARTESIAN_DIM_TO_MODE_MAP[starting_dimension]  # 1,2,3,4,5,6
+
         self.current_mode_index = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode]
 
-        self.robot = JacoRobotSE3(init_control_mode=self.current_mode_index + 1)
+        self.robot = JacoRobotSE3(init_control_mode=self.current_mode_index)
 
         if not self.service_initialized:
             rospy.Service("/sim_env/get_prob_a_s_all_g", PASAllG, self.get_prob_a_s_all_g)

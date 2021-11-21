@@ -184,7 +184,15 @@ CARTESIAN_MODE_SET_OPTIONS = {
         ModeSetType.TwoD: {1: 12, 2: 3},
         ModeSetType.ThreeD: {1: 123},
     },
-    CartesianRobotType.SE3: {ModeSetType.OneD: {1: 1, 2: 2, 3: 3, 4: 5, 5: 4, 6: 6},},
+    CartesianRobotType.SE3: {
+        ModeSetType.OneD: {1: 1, 2: 2, 3: 3, 4: 5, 5: 4, 6: 6},
+    },  # key = mode, value = dimensions in the mode
+}
+
+CARTESIAN_DIM_TO_MODE_MAP = {
+    CartesianRobotType.SE3: {
+        ModeSetType.OneD: {1: 1, 2: 2, 3: 3, 4: 5, 5: 4, 6: 6}
+    },  # key = dimension, value = mode in which dimension appears
 }
 
 CARTESIAN_DIM_NAMES = {
@@ -358,8 +366,15 @@ class JacoRobotSE3(object):
             -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"]]
         )
 
+        # scale down the rotational velocity
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]]
+            -0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]]
+        )
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"]] = (
+            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"]]
+        )
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"]] = (
+            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"]]
         )
         return true_velocity
 

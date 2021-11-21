@@ -29,6 +29,7 @@
 
 import collections
 import rospy
+import random
 import time
 from sensor_msgs.msg import Joy
 from envs.jaco_robot_SE3_env import JacoRobotSE3Env
@@ -42,7 +43,7 @@ from jaco_pfields_node.srv import ComputeVelocity, ComputeVelocityRequest, Compu
 from jaco_pfields_node.srv import ObsDescList, ObsDescListRequest, ObsDescListResponse
 from jaco_pfields_node.srv import GoalPose, GoalPoseRequest, GoalPoseResponse
 from jaco_pfields_node.srv import InitPfields, InitPfieldsRequest, InitPfieldsResponse
-from simulators.msg import State, DiscreteState, ContinuousState
+from simulators.msg import State, DiscreteState, StringArray, ContinuousState
 from simulators.srv import InitBelief, InitBeliefRequest, InitBeliefResponse
 from simulators.srv import ResetBelief, ResetBeliefRequest, ResetBeliefResponse
 from simulators.srv import ComputeIntent, ComputeIntentRequest, ComputeIntentResponse
@@ -204,6 +205,37 @@ class Simulator(object):
         self.env_params["kl_coeff"] = 0.6
         self.env_params["dist_coeff"] = 0.4
 
+        self.all_Rs = [
+            mdp_env_params["cell_size"]["x"],
+            mdp_env_params["cell_size"]["y"],
+            mdp_env_params["cell_size"]["z"],
+            2 * mdp_env_params["cell_size"]["x"],
+            2 * mdp_env_params["cell_size"]["y"],
+            2 * mdp_env_params["cell_size"]["z"],
+            np.linalg.norm([mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"]]),
+            np.linalg.norm([mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]),
+            np.linalg.norm([mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["z"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], 2 * mdp_env_params["cell_size"]["y"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], 2 * mdp_env_params["cell_size"]["z"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], 2 * mdp_env_params["cell_size"]["z"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["z"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["x"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["z"], mdp_env_params["cell_size"]["x"]]),
+            np.linalg.norm([2 * mdp_env_params["cell_size"]["z"], mdp_env_params["cell_size"]["y"]]),
+            np.linalg.norm(
+                [mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]
+            ),
+            np.linalg.norm(
+                [
+                    2 * mdp_env_params["cell_size"]["x"],
+                    2 * mdp_env_params["cell_size"]["y"],
+                    2 * mdp_env_params["cell_size"]["z"],
+                ]
+            ),
+        ]
+
         self._init_goal_pfields()
         self._init_other_pfields(pfield_id="disamb")
         self._init_other_pfields(pfield_id="generic")
@@ -340,8 +372,8 @@ class Simulator(object):
                     inferred_goal_id,
                     inferred_goal_prob,
                     normalized_h_of_p_g_given_phm,
-                    argmax_goal_id,
-                    argmax_goal_id_str,
+                    argmax_goal_ids,
+                    argmax_goal_ids_str,
                 ) = self._get_most_confident_goal()
                 # if autonomy inferred a valid goal, then set alpha accordingly
                 if inferred_goal_id_str is not None and inferred_goal_prob is not None:
@@ -424,6 +456,7 @@ class Simulator(object):
 
                             self.disamb_discrete_state_pub.publish(self.disamb_discrete_state_msg)
                             self.autonomy_turn_target_pub.publish(self.autonomy_turn_target_msg)
+
                             self.function_timer_pub.publish("after")
 
                             self.update_goal_pfield_request.pfield_id = "disamb"
@@ -488,10 +521,25 @@ class Simulator(object):
                         self.freeze_update_pub.publish("Frozen")
 
                         belief_at_disamb_time = self.current_p_g_given_uh
-                        argmax_goal_position = self.obj_positions[argmax_goal_id]
-                        self.argmax_goal_pub.publish(argmax_goal_id_str)
-                        target_point = self._get_target_along_line(robot_position, argmax_goal_position)
+                        # argmax_goal_position = self.obj_positions[argmax_goal_ids]
+                        self.argmax_goal_pub.publish(argmax_goal_ids_str)
+
+                        self.function_timer_pub.publish("before")
+                        destination_for_controller = self._get_mean_of_all_argmax_goals(argmax_goal_ids)
+                        target_point = self._get_target_along_line(robot_position, destination_for_controller)
+
+                        self.autonomy_turn_target_msg.robot_position.x = target_point[0]
+                        self.autonomy_turn_target_msg.robot_position.y = target_point[1]
+                        self.autonomy_turn_target_msg.robot_position.z = target_point[2]
+                        self.autonomy_turn_target_msg.robot_quat.x = robot_orientation[0]
+                        self.autonomy_turn_target_msg.robot_quat.y = robot_orientation[1]
+                        self.autonomy_turn_target_msg.robot_quat.z = robot_orientation[2]
+                        self.autonomy_turn_target_msg.robot_quat.w = robot_orientation[3]
+
                         self.autonomy_turn_start_time = time.time()
+                        self.autonomy_turn_target_pub.publish(self.autonomy_turn_target_msg)
+                        self.function_timer_pub.publish("after")
+
                         self.update_goal_pfield_request.pfield_id = "generic"
                         self.update_goal_pfield_request.goal_position.x = target_point[0]
                         self.update_goal_pfield_request.goal_position.y = target_point[1]
@@ -656,7 +704,7 @@ class Simulator(object):
         self.freeze_update_pub = rospy.Publisher("/freeze_update", String, queue_size=1)
         self.disamb_discrete_state_pub = rospy.Publisher("/disamb_discrete_state", DiscreteState, queue_size=1)
         self.autonomy_turn_target_pub = rospy.Publisher("/autonomy_turn_target", ContinuousState, queue_size=1)
-        self.argmax_goal_pub = rospy.Publisher("/argmax_goal", String, queue_size=1)
+        self.argmax_goal_pub = rospy.Publisher("/argmax_goal", StringArray, queue_size=1)
         self.inferred_goal_pub = rospy.Publisher("/inferred_goal", String, queue_size=1)
 
         # rviz publisher
@@ -676,8 +724,13 @@ class Simulator(object):
         self.blend_vel_msg = Float32MultiArray()
         self.alpha_msg = Float32()
 
-    def _get_target_along_line(self, start_point, end_point, R=10.0):
+    def _get_mean_of_all_argmax_goals(self, argmax_goal_ids):
+        argmax_goal_poses = self.obj_positions[argmax_goal_ids, :]
+        mean_of_all_argmax = np.mean(argmax_goal_poses, axis=0)
+        return list(mean_of_all_argmax)
 
+    def _get_target_along_line(self, start_point, end_point, R=10.0):
+        R = random.choice(self.all_Rs)  # pick a distance to move comparable to the disamb conditions
         D = np.linalg.norm(np.array(end_point) - np.array(start_point))
         R = min(R, D / 2)
         target_x = start_point[0] + (R / D) * (end_point[0] - start_point[0])
@@ -866,8 +919,17 @@ class Simulator(object):
         uniform_distribution = np.array([1.0 / p_g_given_uh_vector.size] * p_g_given_uh_vector.size)
         max_entropy = -np.dot(uniform_distribution, np.log2(uniform_distribution))
         normalized_h_of_p_g_given_phm = -np.dot(p_g_given_uh_vector, np.log2(p_g_given_uh_vector)) / max_entropy
-        argmax_goal_id = np.argmax(p_g_given_uh_vector)
-        argmax_goal_id_str = "goal_" + str(argmax_goal_id)
+
+        # argmax_goal_ids = np.argmax(p_g_given_uh_vector)
+        # argmax_goal_ids_str = "goal_" + str(argmax_goal_ids)
+
+        argmax_goal_ids = np.argwhere(p_g_given_uh_vector == np.amax(p_g_given_uh_vector)).flatten().tolist()
+        # argmax_goal_ids =
+        # argmax_goal_ids = np.argmax(p_g_given_phm_vector)
+        argmax_goal_ids_str = []
+        for argmax_goal_id in argmax_goal_ids:
+            argmax_goal_ids_str.append("goal_" + str(argmax_goal_id))
+
         if normalized_h_of_p_g_given_phm <= self.ENTROPY_THRESHOLD:
             inferred_goal_id = np.argmax(p_g_given_uh_vector)
             inferred_goal_id_str = "goal_" + str(inferred_goal_id)
@@ -878,12 +940,12 @@ class Simulator(object):
                 inferred_goal_id,
                 inferred_goal_prob,
                 normalized_h_of_p_g_given_phm,
-                argmax_goal_id,
-                argmax_goal_id_str,
+                argmax_goal_ids,
+                argmax_goal_ids_str,
             )
         else:
             # if entropy not greater than threshold return None as there is no confident goal
-            return None, None, None, normalized_h_of_p_g_given_phm, argmax_goal_id, argmax_goal_id_str
+            return None, None, None, normalized_h_of_p_g_given_phm, argmax_goal_ids, argmax_goal_ids_str
 
     def _init_goal_pfields(self):
         num_pfields = len(self.obj_positions)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import collections
+import threading
 import rospy
 import time
 from sensor_msgs.msg import Joy
@@ -41,9 +42,9 @@ import numpy as np
 from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
 
-GRID_WIDTH = 14
-GRID_DEPTH = 8
-GRID_HEIGHT = 8
+GRID_WIDTH = 10
+GRID_DEPTH = 6
+GRID_HEIGHT = 6
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
@@ -179,7 +180,11 @@ class Simulator(object):
         self.env.reset()
 
         # map from x,y,z,.... to 1,2,3,...
-        self.mode_msg.data = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
+        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
+        mode_for_starting_dimension = CARTESIAN_DIM_TO_MODE_MAP[CartesianRobotType.SE3][ModeSetType.OneD][
+            starting_dimension
+        ]
+        self.mode_msg.data = mode_for_starting_dimension
         self.modepub.publish(self.mode_msg)
 
         # setup all services
@@ -216,6 +221,9 @@ class Simulator(object):
         self._init_goal_locations_in_inference()
         r = rospy.Rate(100)
         is_done = False
+        self.period = rospy.Duration(0.01)
+        self.blend_thread = threading.Thread(target=self._publishblend, args=(self.period,))
+        self.blend_thread.start()
         while not rospy.is_shutdown():
             if is_done:
                 self.shutdown_hook("reached end of trial")
@@ -319,7 +327,6 @@ class Simulator(object):
                     autonomy_vel = list([0.0] * np.array(human_vel).shape[0])  # 0.0 autonomy vel
                     self.alpha = 0.0  # no autonomy, purely human vel
                     self.inferred_goal_pub.publish("None")
-
             else:
                 # no confident goal, therefore keep autonomy vel to be 0.0 and alpha to be 0.0. Purely human vel
                 autonomy_vel = list([0.0] * np.array(human_vel).shape[0])  # 0.0 autonomy vel
@@ -333,7 +340,7 @@ class Simulator(object):
             self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
             self.alpha_msg.data = self.alpha
 
-            self.blendvelpub.publish(self.blend_vel)
+            # self.blendvelpub.publish(self.blend_vel)
 
             # end condition check
             for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
@@ -398,7 +405,7 @@ class Simulator(object):
             self.make_translucent_region()
             self.make_ur_pub(robot_position, autonomy_vel)
             self.make_uh_pub(robot_position, human_vel)
-            # publish robot state   
+            # publish robot state
 
             # publish markers
             self.goalpub.publish(self.goal_loc)
@@ -409,6 +416,16 @@ class Simulator(object):
             self.uh_arrowpub.publish(self.uh_arrow)
 
             r.sleep()
+
+    def _publishblend(self, period):
+        while not rospy.is_shutdown():
+            start = rospy.get_rostime()
+            self.blendvelpub.publish(self.blend_vel)
+            end = rospy.get_rostime()
+            if end - start < period:
+                rospy.sleep(period - (end - start))
+            else:
+                rospy.loginfo("Send data took more than the specified control loop period")
 
     def _initialize_publishers(self):
         self.shutdown_pub = rospy.Publisher("/shutdown", String, queue_size=1)
