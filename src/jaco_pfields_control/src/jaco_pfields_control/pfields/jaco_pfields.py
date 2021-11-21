@@ -141,7 +141,7 @@ class JacoPfields(object):
                 self.pfieldvel_array = self.goal_position - self.eef_position
             else:
                 self.pfieldvel_array = (
-                    0.1
+                    0.08
                     * (self.goal_position - self.eef_position)
                     / (np.linalg.norm(self.goal_position - self.eef_position))
                 )
@@ -168,7 +168,7 @@ class JacoPfields(object):
             self.pfieldrot_array[0] = self.diff_quat[0] / norm_den
             self.pfieldrot_array[1] = self.diff_quat[1] / norm_den
             self.pfieldrot_array[2] = self.diff_quat[2] / norm_den
-            self.pfieldrot_array[:] = 0.7 * self.pfieldrot_array[:]  # sclae the velocity
+            self.pfieldrot_array[:] = 0.6 * self.pfieldrot_array[:]  # sclae the velocity
 
         if abs(self.theta_to_goal) < 0.06:
             self.pfieldrot_array = (np.zeros((1, 3)))[0]

@@ -97,7 +97,7 @@ class DiscreteMIDisambAlgo(object):
         (
             states_in_local_spatial_window,
             continuous_positions_of_local_spatial_window,
-        ) = self._compute_spatial_window_around_current_state(current_state)
+        ) = self._compute_spatial_window_around_current_state(current_state, robot_position)
         # print(states_in_local_spatial_window)
         # print(len(states_in_local_spatial_window))
         # # perform mi computation for all states in spatial window
@@ -202,7 +202,7 @@ class DiscreteMIDisambAlgo(object):
                 self.avg_mi_for_valid_states[vs]
             ) - self.dist_coeff * (self.dist_of_vs_from_weighted_mean_of_goals[vs])
 
-    def _compute_spatial_window_around_current_state(self, current_state):
+    def _compute_spatial_window_around_current_state(self, current_state, robot_position):
         current_grid_loc = np.array(current_state[0:3])  # (x,y,z)
         states_in_local_spatial_window = []
         continuous_positions_of_local_spatial_window = []
@@ -224,7 +224,7 @@ class DiscreteMIDisambAlgo(object):
         ]
         for wc, wc_continuous in zip(window_coordinates, window_displacements_continuous):
             vs = current_grid_loc + np.array(wc)  # 3d grid loc
-            vs_continuous = continuous_position + wc_continuous
+            vs_continuous = robot_position + wc_continuous
             for mode in range(self.num_modes):  #
                 # same orientation as the current state for all states under consideration
                 vs_mode = (

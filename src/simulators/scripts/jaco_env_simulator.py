@@ -29,6 +29,7 @@
 
 import collections
 import rospy
+import threading
 import random
 import time
 from sensor_msgs.msg import Joy
@@ -69,9 +70,9 @@ import numpy as np
 from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
 
-GRID_WIDTH = 14
-GRID_DEPTH = 8
-GRID_HEIGHT = 8
+GRID_WIDTH = 10
+GRID_DEPTH = 6
+GRID_HEIGHT = 6
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
@@ -247,8 +248,11 @@ class Simulator(object):
         self.disamb_algo = DiscreteMIDisambAlgo(self.env_params, subject_id)
 
         # map from x,y,z,.... to 1,2,3,...
-        self.mode_msg.data = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
-        self.modepub.publish(self.mode_msg)
+        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
+        mode_for_starting_dimension = CARTESIAN_DIM_TO_MODE_MAP[CartesianRobotType.SE3][ModeSetType.OneD][
+            starting_dimension
+        ]
+        self.mode_msg.data = mode_for_starting_dimension
         # setup all services
         rospy.loginfo("Waiting for jaco_intent inference node")
         rospy.wait_for_service("/jaco_intent_inference/init_belief")
@@ -286,8 +290,11 @@ class Simulator(object):
         self.is_autonomy_turn = False
         self.has_human_initiated = False
         self.autonomy_activate_ctr = 0
-        self.DISAMB_ACTIVATE_THRESHOLD = 100
+        self.DISAMB_ACTIVATE_THRESHOLD = 90
         is_done = False
+        self.period = rospy.Duration(0.01)
+        self.blend_thread = threading.Thread(target=self._publishblend, args=(self.period,))
+        self.blend_thread.start()
         while not rospy.is_shutdown():
             if is_done:
                 self.shutdown_hook("reached end of trial")
@@ -417,7 +424,7 @@ class Simulator(object):
                     # reset the activate ctr because human is providing nonzro commands
                     self.autonomy_activate_ctr = 0
 
-                self.blendvelpub.publish(self.blend_vel)
+                # self.blendvelpub.publish(self.blend_vel)
 
                 # TODO: determine end condition here?
 
@@ -584,6 +591,7 @@ class Simulator(object):
                         np.linalg.norm(np.array(robot_position) - np.array(max_disamb_continuous_position)) < 0.05
                         or time.time() - self.autonomy_turn_start_time > self.AUTONOMY_TURN_TIMEOUT
                     ):
+                        self._zero_out_blend_vel()
                         print("DONE WITH DISAMB PHASE")
                         # reset belief to what it was when the disamb mode was activated.
                         print("RESET BELIEF")
@@ -595,6 +603,7 @@ class Simulator(object):
                         self.is_autonomy_turn = False
                         self.has_human_initiated = False
                         self.turn_indicator_pub.publish("human")
+
                         self.autonomy_activate_ctr = 0
                         self.autonomy_turn_start_time = 0.0
                     else:
@@ -603,12 +612,13 @@ class Simulator(object):
                         # since alpha = 1.0, this will be purely autonomy
                         self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="disamb")
                         self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
-                        self.blendvelpub.publish(self.blend_vel)
+                        # self.blendvelpub.publish(self.blend_vel)
                 elif self.algo_condition == "control":
                     if (
                         np.linalg.norm(np.array(robot_position) - np.array(target_point)) < 0.05
                         or time.time() - self.autonomy_turn_start_time > self.AUTONOMY_TURN_TIMEOUT
                     ):
+                        self._zero_out_blend_vel()
                         print("DONE WITH AUTONOMY PHASE")
                         print("RESET BELIEF")
 
@@ -625,7 +635,7 @@ class Simulator(object):
                         self.alpha = 1.0
                         self._blend_velocities(np.array(human_vel), np.array(autonomy_vel), blend_mode="control")
                         self.blend_vel_msg.data = list(self.blend_vel.velocity.data)
-                        self.blendvelpub.publish(self.blend_vel)
+                        # self.blendvelpub.publish(self.blend_vel)
 
             # populate robot state for publication
             self.robot_discrete_state.discrete_x = robot_discrete_state[0]
@@ -686,6 +696,25 @@ class Simulator(object):
             self.uh_arrowpub.publish(self.uh_arrow)
 
             r.sleep()
+
+    def _zero_out_blend_vel(self):
+        for i in range(self.robot_dim):
+            self.blend_vel.velocity.data[i] = 0.0
+
+        # zero gripper velocity
+        self.blend_vel.velocity.data[6] = 0.0
+        self.blend_vel.velocity.data[7] = 0.0
+        self.blend_vel.velocity.data[8] = 0.0
+
+    def _publishblend(self, period):
+        while not rospy.is_shutdown():
+            start = rospy.get_rostime()
+            self.blendvelpub.publish(self.blend_vel)
+            end = rospy.get_rostime()
+            if end - start < period:
+                rospy.sleep(period - (end - start))
+            else:
+                rospy.loginfo("Send data took more than the specified control loop period")
 
     def _initialize_publishers(self):
         self.shutdown_pub = rospy.Publisher("/shutdown", String, queue_size=1)

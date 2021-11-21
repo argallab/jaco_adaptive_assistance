@@ -216,7 +216,7 @@ CARTESIAN_DIM_TO_CTRL_INDEX_MAP = {
     CartesianRobotType.SE2_NH: {"V": 0, "W": 1},
     CartesianRobotType.R3: {"X": 0, "Y": 1, "Z": 2},
     CartesianRobotType.SE2: {"X": 0, "Y": 1, "YAW": 2},
-    CartesianRobotType.SE3: {"X": 0, "Y": 1, "Z": 2, "YAW": 4, "PITCH": 3, "ROLL": 5},
+    CartesianRobotType.SE3: {"X": 1, "Y": 2, "Z": 3, "YAW": 5, "PITCH": 4, "ROLL": 6},
 }
 
 # utility functions
@@ -356,25 +356,25 @@ class JacoRobotSE3(object):
             true_velocity[acd] = velocity_action[mcd]
 
         # flip x,y,z, so that "puff" results in rightward, forwards and downwards movement of the arm. Visually sensible.
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"]] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"]]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"] - 1] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"] - 1]
         )
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"]] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"]]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"] - 1] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"] - 1]
         )
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"]] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"]]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"] - 1] = (
+            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"] - 1]
         )
 
         # scale down the rotational velocity
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]] = (
-            -0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"]]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"] - 1] = (
+            -0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"] - 1]
         )
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"]] = (
-            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"]]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"] - 1] = (
+            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"] - 1]
         )
-        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"]] = (
-            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"]]
+        true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"] - 1] = (
+            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"] - 1]
         )
         return true_velocity
 

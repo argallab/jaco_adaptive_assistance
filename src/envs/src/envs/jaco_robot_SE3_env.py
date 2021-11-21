@@ -144,8 +144,9 @@ class JacoRobotSE3Env(object):
         # starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode] + 1
         # self.current_mode_index = CARTESIAN_DIM_TO_MODE_MAP[starting_dimension]  # 1,2,3,4,5,6
 
-        self.current_mode_index = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode]
-
+        # self.current_mode_index = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode]
+        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type][self.start_mode]  # dimensions
+        self.current_mode_index = CARTESIAN_DIM_TO_MODE_MAP[self.robot_type][ModeSetType.OneD][starting_dimension]
         self.robot = JacoRobotSE3(init_control_mode=self.current_mode_index)
 
         if not self.service_initialized:

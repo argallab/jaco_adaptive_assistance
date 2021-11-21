@@ -180,7 +180,9 @@ class Simulator(object):
         self.env.reset()
 
         # map from x,y,z,.... to 1,2,3,...
-        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
+        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][
+            self.env_params["start_mode"]
+        ]  # dimensions
         mode_for_starting_dimension = CARTESIAN_DIM_TO_MODE_MAP[CartesianRobotType.SE3][ModeSetType.OneD][
             starting_dimension
         ]
