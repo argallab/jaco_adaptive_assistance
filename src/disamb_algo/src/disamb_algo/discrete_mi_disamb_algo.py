@@ -51,9 +51,14 @@ class DiscreteMIDisambAlgo(object):
         self.mode_set = CARTESIAN_MODE_SET_OPTIONS[self.robot_type][self.mode_set_type]
         self.num_modes = len(self.mode_set)
 
+        self.goal_positions = self.env_params["goal_positions"]
+        self.goal_quats = self.env_params["goal_quats"]
+
         self.num_modes = self.env_params.get("num_modes", 3)
         self.kl_coeff = self.env_params.get("kl_coeff", 0.8)
         self.dist_coeff = self.env_params.get("dist_coeff", 0.2)
+        self.kl_coeff = 0.5
+        self.dist_coeff = 0.5
         print(self.kl_coeff, self.dist_coeff)
 
         self.distribution_directory_path = os.path.join(
@@ -85,14 +90,14 @@ class DiscreteMIDisambAlgo(object):
 
         print("Finished initializing DISAMB CLASS")
 
-    def get_local_disamb_state(self, prior, current_state):
+    def get_local_disamb_state(self, prior, current_state, robot_position, robot_orientation):
         # compute window around current_state
         print("CURRENT DISCRETE STATE ", current_state)
         states_in_local_spatial_window = self._compute_spatial_window_around_current_state(current_state)
         # print(states_in_local_spatial_window)
         # print(len(states_in_local_spatial_window))
         # # perform mi computation for all states in spatial window
-        self._compute_mi(prior, states_in_local_spatial_window)
+        self._compute_mi(prior, states_in_local_spatial_window, robot_position)
         # # pick argmax among this list
         max_disamb_state = self._max_disambiguating_state()
         return max_disamb_state

@@ -193,6 +193,8 @@ class Simulator(object):
         mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
         self.env_params["mdp_list"] = mdp_list
         self.env_params["start_mode"] = start_mode  # or maybe from all 6D
+        self.env_params["goal_positions"] = self.obj_positions
+        self.env_params["goal_quats"] = self.obj_quats
         self.env_params["num_goals"] = len(self.obj_positions)
         # disamb algo specific params
         self.env_params["spatial_window_half_length"] = 3  # number of cells
@@ -399,7 +401,7 @@ class Simulator(object):
                             belief_at_disamb_time = self.current_p_g_given_uh
                             self.function_timer_pub.publish("before")
                             max_disamb_state = self.disamb_algo.get_local_disamb_state(
-                                belief_at_disamb_time, robot_discrete_state
+                                belief_at_disamb_time, robot_discrete_state, robot_position, robot_orientation
                             )
                             print("CURRENT_DISCRETE STATE", robot_discrete_state, robot_position, robot_orientation)
                             print("MAX_DISAMB STATE", max_disamb_state)
