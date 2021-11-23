@@ -68,6 +68,8 @@
 	<arg name="PORT" default="/dev/ttyACM0" />
 	<node pkg="rosserial_python" name="mode_display_arduino" type="serial_node.py" args="$(arg PORT)" />
 
+  <arg name="PORT_2" default="/dev/ttyACM1" />
+	<node pkg="rosserial_python" name="turn_taking_arduino" type="serial_node.py" args="$(arg PORT_2)" />
 
 
 </launch>

@@ -52,7 +52,7 @@ from simulators.srv import QueryBelief, QueryBeliefRequest, QueryBeliefResponse
 from scipy.spatial import KDTree
 
 from std_srvs.srv import SetBool, SetBoolRequest, SetBoolResponse
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Int16MultiArray
 
 from geometry_msgs.msg import Vector3, Quaternion
 from jaco_pfields_node.msg import ObsDesc
@@ -76,6 +76,9 @@ GRID_HEIGHT = 6
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
+
+RED = [255, 0, 0]
+BLUE = [0, 0, 255]
 
 
 class Simulator(object):
@@ -289,16 +292,21 @@ class Simulator(object):
         r = rospy.Rate(100)
         self.is_autonomy_turn = False
         self.has_human_initiated = False
+        self.human_turn_start_index = 0
         self.autonomy_activate_ctr = 0
-        self.DISAMB_ACTIVATE_THRESHOLD = 90
+        self.DISAMB_ACTIVATE_THRESHOLD = 100
+        self.HUMAN_TURN_LIMIT = 200
         is_done = False
+
         self.period = rospy.Duration(0.01)
         self.blend_thread = threading.Thread(target=self._publishblend, args=(self.period,))
         self.blend_thread.start()
+
         while not rospy.is_shutdown():
             if is_done:
                 self.shutdown_hook("reached end of trial")
                 break
+            self.turn_take_pub.publish(self.turn_taking_msg)
             robot_position = self.env.get_robot_position()  # continuous [x,y,z]
             robot_orientation = self.env.get_robot_orientation()  # continuous 4d quat
             robot_full_state = self.env.get_robot_full_state()
@@ -410,6 +418,9 @@ class Simulator(object):
                         # zero human vel and human has already issued some non-zero velocities during their turn,
                         # in which case keep track of inactivity time
                         self.autonomy_activate_ctr += 1
+                        self.human_turn_start_index += 1
+                        if self.human_turn_start_index >= self.HUMAN_TURN_LIMIT:
+                            self.human_turn_start_index = self.HUMAN_TURN_LIMIT
                         # print("ACTIVATE AUTONOM CTR", self.autonomy_activate_ctr)
                 else:
                     if not self.has_human_initiated:
@@ -421,18 +432,27 @@ class Simulator(object):
                         self.freeze_update_request.data = False
                         self.freeze_update_srv(self.freeze_update_request)
                         self.freeze_update_pub.publish("Unfrozen")
+                    else:
+                        self.human_turn_start_index += 1
+                        if self.human_turn_start_index >= self.HUMAN_TURN_LIMIT:
+                            self.human_turn_start_index = self.HUMAN_TURN_LIMIT
                     # reset the activate ctr because human is providing nonzro commands
                     self.autonomy_activate_ctr = 0
 
                 # self.blendvelpub.publish(self.blend_vel)
 
                 # TODO: determine end condition here?
-
+                self.turn_taking_msg.data = self.get_blended_color(
+                    self.human_turn_start_index / float(self.HUMAN_TURN_LIMIT)
+                )
+                self.turn_take_pub.publish(self.turn_taking_msg)
                 if self.algo_condition == "disamb":
                     if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         if normalized_h_of_p_g_given_phm >= self.ENTROPY_THRESHOLD:
                             print("NORMALIZED ENTROPY", normalized_h_of_p_g_given_phm)
                             print("ACTIVATING DISAMB")
+                            self.turn_taking_msg.data = RED
+                            self.turn_take_pub.publish(self.turn_taking_msg)
                             self.turn_indicator_pub.publish("autonomy-disamb")
                             self.freeze_update_request.data = True
                             self.freeze_update_srv(self.freeze_update_request)
@@ -485,6 +505,9 @@ class Simulator(object):
                         else:
                             # human has stopped. autonomy' turn. Upon waiting, the confidence is still high. Therefore, move the robot to current confident goal.
                             print("ACTIVATING AUTONOMY")
+                            self.turn_taking_msg.data = RED
+                            self.turn_take_pub.publish(self.turn_taking_msg)
+
                             self.turn_indicator_pub.publish("autonomy-pfield")
                             self.freeze_update_request.data = True
                             self.freeze_update_srv(self.freeze_update_request)
@@ -521,7 +544,8 @@ class Simulator(object):
                 elif self.algo_condition == "control":
                     if self.autonomy_activate_ctr > self.DISAMB_ACTIVATE_THRESHOLD:
                         print("ACTIVATING AUTONOMY")
-
+                        self.turn_taking_msg.data = RED
+                        self.turn_take_pub.publish(self.turn_taking_msg)
                         self.turn_indicator_pub.publish("autonomy-control")
                         self.freeze_update_request.data = True
                         self.freeze_update_srv(self.freeze_update_request)
@@ -602,6 +626,10 @@ class Simulator(object):
 
                         self.is_autonomy_turn = False
                         self.has_human_initiated = False
+                        self.human_turn_start_index = 0
+                        self.turn_taking_msg.data = BLUE
+                        self.turn_take_pub.publish(self.turn_taking_msg)
+
                         self.turn_indicator_pub.publish("human")
 
                         self.autonomy_activate_ctr = 0
@@ -628,6 +656,9 @@ class Simulator(object):
 
                         self.is_autonomy_turn = False
                         self.has_human_initiated = False
+                        self.human_turn_start_index = 0
+                        self.turn_taking_msg.data = BLUE
+                        self.turn_take_pub.publish(self.turn_taking_msg)
                         self.turn_indicator_pub.publish("human")
                         self.autonomy_activate_ctr = 0
                         self.autonomy_turn_start_time = 0.0
@@ -720,6 +751,7 @@ class Simulator(object):
         self.shutdown_pub = rospy.Publisher("/shutdown", String, queue_size=1)
         self.blendvelpub = rospy.Publisher("/j2s7s300_driver/in/cartesian_velocity_finger", CartVelCmd, queue_size=1)
         self.modepub = rospy.Publisher("/mi/current_mode", Int16, queue_size=1)
+        self.turn_take_pub = rospy.Publisher("/turn_signal", Int16MultiArray, queue_size=1)
 
         # study publishers
         self.robot_state_pub = rospy.Publisher("/robot_state", State, queue_size=1)
@@ -752,6 +784,14 @@ class Simulator(object):
         self.autonomy_vel_msg = Float32MultiArray()
         self.blend_vel_msg = Float32MultiArray()
         self.alpha_msg = Float32()
+        self.turn_taking_msg = Int16MultiArray()
+
+        _dim = [MultiArrayDimension()]
+        _dim[0].label = "rgb"
+        _dim[0].size = 3
+        _dim[0].stride = 3
+        self.turn_taking_msg.layout.dim = _dim
+        self.turn_taking_msg.data = [255, 0, 0]
 
     def _get_mean_of_all_argmax_goals(self, argmax_goal_ids):
         argmax_goal_poses = self.obj_positions[argmax_goal_ids, :]
@@ -827,6 +867,10 @@ class Simulator(object):
         self.blend_vel.velocity.data[6] = 0.0
         self.blend_vel.velocity.data[7] = 0.0
         self.blend_vel.velocity.data[8] = 0.0
+
+    def get_blended_color(self, blend_amount):
+        color = (1.0 - blend_amount) * np.array(BLUE) + blend_amount * np.array(RED)
+        return list(color)
 
     def joy_callback(self, msg):
         self.input_action["human"] = msg
