@@ -224,7 +224,7 @@ class JacoIntentInference(object):
                 self.compute_current_input()
                 l = -0.0 * np.ones((self.NUM_GOALS, self.NUM_GOALS))  # l is lambda
                 np.fill_diagonal(l, 0)  # make diagonal elements zero
-                l = 20 * np.eye(self.NUM_GOALS) + l
+                l = 120 * np.eye(self.NUM_GOALS) + l
                 l = np.matrix(l)
                 TC = -(1 / tau) * np.eye(self.NUM_GOALS)
 

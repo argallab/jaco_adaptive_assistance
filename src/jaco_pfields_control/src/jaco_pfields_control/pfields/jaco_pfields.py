@@ -141,7 +141,7 @@ class JacoPfields(object):
                 self.pfieldvel_array = self.goal_position - self.eef_position
             else:
                 self.pfieldvel_array = (
-                    0.08
+                    0.1
                     * (self.goal_position - self.eef_position)
                     / (np.linalg.norm(self.goal_position - self.eef_position))
                 )

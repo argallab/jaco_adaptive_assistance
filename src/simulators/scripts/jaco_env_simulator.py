@@ -71,8 +71,8 @@ from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
 
 GRID_WIDTH = 10
-GRID_DEPTH = 6
-GRID_HEIGHT = 6
+GRID_DEPTH = 8
+GRID_HEIGHT = 8
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
@@ -94,6 +94,8 @@ class Simulator(object):
         elif self.scene == "3":
             self.num_objs = 3
         elif self.scene == "4":
+            self.num_objs = 4
+        elif self.scene == "5":
             self.num_objs = 4
 
         self.obj_positions = np.array([[0] * 3] * self.num_objs, dtype="f")
@@ -184,7 +186,7 @@ class Simulator(object):
         self.world_bounds["zrange"] = collections.OrderedDict()
 
         self.world_bounds["xrange"]["lb"] = -0.7
-        self.world_bounds["yrange"]["lb"] = -0.8
+        self.world_bounds["yrange"]["lb"] = -0.7
         self.world_bounds["zrange"]["lb"] = 0.0
         self.world_bounds["xrange"]["ub"] = 0.7
         self.world_bounds["yrange"]["ub"] = 0.0
@@ -584,7 +586,7 @@ class Simulator(object):
 
                 # end condition check
                 for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
-                    if np.linalg.norm(g_position - robot_position) < 0.05:
+                    if np.linalg.norm(g_position - robot_position) < 0.10:
                         diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
                         diff_quat = diff_quat / np.linalg.norm(diff_quat)  # normalize
                         theta_to_goal = 2 * math.acos(diff_quat[3])  # 0 to 2pi. only rotation in one direction.
@@ -1204,6 +1206,38 @@ class Simulator(object):
             self.obj_quats[3][1] = -0.278
             self.obj_quats[3][2] = 0.673
             self.obj_quats[3][3] = -0.236
+        elif self.scene == "5":
+            self.obj_positions[0][0] = 0.382  # custom left otp
+            self.obj_positions[0][1] = -0.122
+            self.obj_positions[0][2] = 0.042
+            self.obj_quats[0][0] = 0.991
+            self.obj_quats[0][1] = 0.086
+            self.obj_quats[0][2] = 0.080
+            self.obj_quats[0][3] = -0.059
+
+            self.obj_positions[1][0] = 0.344  # custom left otp
+            self.obj_positions[1][1] = -0.525
+            self.obj_positions[1][2] = 0.089
+            self.obj_quats[1][0] = 0.990
+            self.obj_quats[1][1] = 0.100
+            self.obj_quats[1][2] = 0.082
+            self.obj_quats[1][3] = -0.051
+
+            self.obj_positions[2][0] = -0.391  # custom left otp
+            self.obj_positions[2][1] = -0.574
+            self.obj_positions[2][2] = 0.072
+            self.obj_quats[2][0] = 0.644
+            self.obj_quats[2][1] = -0.358
+            self.obj_quats[2][2] = -0.206
+            self.obj_quats[2][3] = 0.644
+
+            self.obj_positions[3][0] = -0.330  # custom left otp
+            self.obj_positions[3][1] = -0.570
+            self.obj_positions[3][2] = 0.502
+            self.obj_quats[3][0] = -0.644
+            self.obj_quats[3][1] = -0.278
+            self.obj_quats[3][2] = 0.673
+            self.obj_quats[3][3] = -0.236
 
     def _create_mdp_list(self, mdp_env_params):
         mdp_list = []
@@ -1415,6 +1449,7 @@ class Simulator(object):
     def shutdown_hook(self, msg_string="DONE"):
         if not self.called_shutdown:
             self.called_shutdown = True
+            self._zero_out_blend_vel()
             self.shutdown_pub.publish("shutdown")
             print("Shutting down")
 

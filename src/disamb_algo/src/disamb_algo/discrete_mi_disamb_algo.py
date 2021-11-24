@@ -234,7 +234,7 @@ class DiscreteMIDisambAlgo(object):
                     mode + 1,
                 )
                 # skip if too close to the base or too close to table. (0,0,0) is fwd-right from behind the base
-                if vs[1] >= self.grid_depth - 2 or vs[2] < 1:
+                if vs[1] >= self.grid_depth - 2 or vs[2] < 1 or vs[1] < 1:
                     continue
                 if vs_mode in all_state_coords:
                     states_in_local_spatial_window.append(vs_mode)

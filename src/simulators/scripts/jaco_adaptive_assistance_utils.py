@@ -357,24 +357,24 @@ class JacoRobotSE3(object):
 
         # flip x,y,z, so that "puff" results in rightward, forwards and downwards movement of the arm. Visually sensible.
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"] - 1] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"] - 1]
+            -0.2 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["X"] - 1]
         )
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"] - 1] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"] - 1]
+            -0.2 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Y"] - 1]
         )
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"] - 1] = (
-            -1.0 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"] - 1]
+            -0.2 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["Z"] - 1]
         )
 
         # scale down the rotational velocity
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"] - 1] = (
-            -0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"] - 1]
+            -0.4 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["YAW"] - 1]
         )
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"] - 1] = (
-            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"] - 1]
+            0.4 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["PITCH"] - 1]
         )
         true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"] - 1] = (
-            0.5 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"] - 1]
+            0.4 * true_velocity[CARTESIAN_DIM_TO_CTRL_INDEX_MAP[self.robot_type]["ROLL"] - 1]
         )
         return true_velocity
 
