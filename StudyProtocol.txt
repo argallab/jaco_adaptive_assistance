@@ -1,3 +1,11 @@
+USEFUL SERVICES:
+
+STOP FORCE CONTROL - rosservice call /j2s7s300_driver/in/stop_force_control
+SET CONTROL MODE TRAJECTORY - rosservice call /j2s7s300_driver/in/set_control_mode "current_control_mode: 'trajectory'"
+SET CONTROL MODE VELOCITY - rosservice call /j2s7s300_driver/in/set_control_mode "current_control_mode: 'velocity'"
+START SNP - 
+
+
 phi given a
 roslaunch simulators p_phi_given_a_sim.launch subject_id:=deepak save:=true iteration:=1 block:=4 training_mode:=trans
 roslaunch simulators p_phi_given_a_sim.launch subject_id:=deepak save:=true iteration:=1 block:=4 training_mode:=rot
@@ -46,7 +54,7 @@ roslaunch simulators continuous_world_SE2_sim.launch subject_id:=andrewtest algo
 
 SCENE 4
 DISAMB
-roslaunch simulators jaco.launch subject_id:=deepak algo_condition:=disamb save:=false scene:=4 start_mode:=X trial_id:=0
+roslaunch simulators jaco.launch subject_id:=deepak algo_condition:=disamb save:=false scene:=5 start_mode:=ROLL trial_id:=0
 
 SCENE 4
 control

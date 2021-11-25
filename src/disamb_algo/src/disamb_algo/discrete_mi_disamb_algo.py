@@ -58,8 +58,8 @@ class DiscreteMIDisambAlgo(object):
         self.num_modes = self.env_params.get("num_modes", 3)
         self.kl_coeff = self.env_params.get("kl_coeff", 0.8)
         self.dist_coeff = self.env_params.get("dist_coeff", 0.2)
-        self.kl_coeff = 0.5
-        self.dist_coeff = 0.5
+        self.kl_coeff = 1.0
+        self.dist_coeff = 1.0
         print(self.kl_coeff, self.dist_coeff)
 
         self.distribution_directory_path = os.path.join(
@@ -93,7 +93,8 @@ class DiscreteMIDisambAlgo(object):
 
     def get_local_disamb_state(self, prior, current_state, robot_position, robot_orientation):
         # compute window around current_state
-        print("CURRENT DISCRETE STATE ", current_state)
+        # prior = [0.48, 0.48, 0.02]
+        print("CURRENT DISCRETE STATE ", current_state, prior)
         (
             states_in_local_spatial_window,
             continuous_positions_of_local_spatial_window,
@@ -111,6 +112,12 @@ class DiscreteMIDisambAlgo(object):
         # print("REWARDS FOR ALL NEIGHBORING STATES ", rewards)
         amax = np.argmax(rewards)
         max_disamb_state = list(self.avg_total_reward_for_valid_states.keys())[amax]
+        print(
+            "COMPONENT WEIGHTS",
+            self.dist_coeff * self.dist_of_vs_from_weighted_mean_of_goals[max_disamb_state],
+            self.kl_coeff * self.avg_mi_for_valid_states[max_disamb_state],
+            self.avg_total_reward_for_valid_states[max_disamb_state],
+        )
         return max_disamb_state
 
     def _compute_mi(
@@ -239,7 +246,7 @@ class DiscreteMIDisambAlgo(object):
                 if vs_mode in all_state_coords:
                     states_in_local_spatial_window.append(vs_mode)
                     continuous_positions_of_local_spatial_window.append(wc_continuous)
-        print("LOCAL WINDOW ", states_in_local_spatial_window)
+        # print("LOCAL WINDOW ", states_in_local_spatial_window)
 
         assert len(states_in_local_spatial_window) > 0, current_state
         return states_in_local_spatial_window, continuous_positions_of_local_spatial_window
