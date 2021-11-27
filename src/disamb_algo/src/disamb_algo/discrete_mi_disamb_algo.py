@@ -62,9 +62,15 @@ class DiscreteMIDisambAlgo(object):
         self.dist_coeff = 1.0
         print(self.kl_coeff, self.dist_coeff)
 
-        self.distribution_directory_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "se2_personalized_distributions"
+        inference_engine_dir = os.path.abspath(
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), os.pardir, os.pardir, "jaco_intent_inference")
         )
+        self.distribution_directory_path = os.path.join(inference_engine_dir, "personalized_distributions")
+        assert os.path.exists(self.distribution_directory_path)
+
+        # self.distribution_directory_path = os.path.join(
+        #     os.path.dirname(os.path.dirname(__file__)), "se2_personalized_distributions"
+        # )
         # unify the initialization of these distribution between different classes
         # init all distributions from file
         if os.path.exists(os.path.join(self.distribution_directory_path, str(self.subject_id) + "_p_phi_given_a.pkl")):
