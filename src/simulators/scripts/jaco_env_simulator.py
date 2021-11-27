@@ -71,8 +71,8 @@ from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
 
 GRID_WIDTH = 10
-GRID_DEPTH = 8
-GRID_HEIGHT = 8
+GRID_DEPTH = 10
+GRID_HEIGHT = 10
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
@@ -204,7 +204,7 @@ class Simulator(object):
         self.env_params["goal_quats"] = self.obj_quats
         self.env_params["num_goals"] = len(self.obj_positions)
         # disamb algo specific params
-        self.env_params["spatial_window_half_length"] = 3  # number of cells
+        self.env_params["spatial_window_half_length"] = 2  # number of cells
         self.algo_condition = algo_condition
         self.env_params["robot_type"] = CartesianRobotType.SE3
         # kl_coeff, num_modes,
@@ -253,7 +253,7 @@ class Simulator(object):
         self.disamb_algo = DiscreteMIDisambAlgo(self.env_params, subject_id)
 
         # map from x,y,z,.... to 1,2,3,...
-        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]] + 1
+        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]]
         mode_for_starting_dimension = CARTESIAN_DIM_TO_MODE_MAP[CartesianRobotType.SE3][ModeSetType.OneD][
             starting_dimension
         ]
@@ -586,7 +586,7 @@ class Simulator(object):
 
                 # end condition check
                 for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
-                    if np.linalg.norm(g_position - robot_position) < 0.10:
+                    if np.linalg.norm(g_position - robot_position) < 0.07:
                         diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
                         diff_quat = diff_quat / np.linalg.norm(diff_quat)  # normalize
                         theta_to_goal = 2 * math.acos(diff_quat[3])  # 0 to 2pi. only rotation in one direction.
@@ -595,7 +595,7 @@ class Simulator(object):
                             theta_to_goal = abs(theta_to_goal)
                             diff_quat = -diff_quat
 
-                        if abs(theta_to_goal) < 0.06 and self.has_human_initiated:
+                        if abs(theta_to_goal) < 0.08 and self.has_human_initiated:
                             is_done = True
                             break
             else:
@@ -1150,31 +1150,33 @@ class Simulator(object):
             self.obj_quats[2][2] = -0.029
             self.obj_quats[2][3] = 0.708
         elif self.scene == "3":
-            self.obj_positions[0][0] = 0.1  # custom left otp
-            self.obj_positions[0][1] = -0.406
-            self.obj_positions[0][2] = 0.1
-            self.obj_quats[0][0] = 0.706
-            self.obj_quats[0][1] = -0.016
-            self.obj_quats[0][2] = -0.029
-            self.obj_quats[0][3] = 0.708
+            # 3 object
+            self.obj_positions[0][0] = 0.497  # custom left otp
+            self.obj_positions[0][1] = -0.468
+            self.obj_positions[0][2] = 0.253
+            self.obj_quats[0][0] = 0.723
+            self.obj_quats[0][1] = 0.166
+            self.obj_quats[0][2] = 0.347
+            self.obj_quats[0][3] = 0.574
 
-            self.obj_positions[1][0] = 0.1  # custom left otp
-            self.obj_positions[1][1] = -0.406
-            self.obj_positions[1][2] = 0.3
-            self.obj_quats[1][0] = 0.706
-            self.obj_quats[1][1] = -0.016
-            self.obj_quats[1][2] = -0.029
-            self.obj_quats[1][3] = 0.708
+            self.obj_positions[1][0] = 0.051  # custom left otp
+            self.obj_positions[1][1] = -0.602
+            self.obj_positions[1][2] = 0.253
+            self.obj_quats[1][0] = 0.796
+            self.obj_quats[1][1] = -0.032
+            self.obj_quats[1][2] = 0.082
+            self.obj_quats[1][3] = 0.599
 
-            self.obj_positions[2][0] = 0.1  # custom left otp
-            self.obj_positions[2][1] = -0.406
-            self.obj_positions[2][2] = 0.5
-            self.obj_quats[2][0] = 0.706
-            self.obj_quats[2][1] = -0.016
-            self.obj_quats[2][2] = -0.029
-            self.obj_quats[2][3] = 0.708
+            self.obj_positions[2][0] = -0.367  # custom left otp
+            self.obj_positions[2][1] = -0.164
+            self.obj_positions[2][2] = 0.077
+            self.obj_quats[2][0] = 0.996
+            self.obj_quats[2][1] = -0.065
+            self.obj_quats[2][2] = -0.035
+            self.obj_quats[2][3] = 0.047
         elif self.scene == "4":
             # 4 object, 2 on left 2 on right
+            # 4 goals
             self.obj_positions[0][0] = 0.561  # custom left otp
             self.obj_positions[0][1] = -0.262
             self.obj_positions[0][2] = 0.265
@@ -1209,7 +1211,7 @@ class Simulator(object):
         elif self.scene == "5":
             self.obj_positions[0][0] = 0.382  # custom left otp
             self.obj_positions[0][1] = -0.122
-            self.obj_positions[0][2] = 0.042
+            self.obj_positions[0][2] = 0.072
             self.obj_quats[0][0] = 0.991
             self.obj_quats[0][1] = 0.086
             self.obj_quats[0][2] = 0.080
@@ -1217,7 +1219,7 @@ class Simulator(object):
 
             self.obj_positions[1][0] = 0.344  # custom left otp
             self.obj_positions[1][1] = -0.525
-            self.obj_positions[1][2] = 0.089
+            self.obj_positions[1][2] = 0.072
             self.obj_quats[1][0] = 0.990
             self.obj_quats[1][1] = 0.100
             self.obj_quats[1][2] = 0.082
