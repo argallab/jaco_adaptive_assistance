@@ -116,9 +116,9 @@ python extract_topics_from_bag.py $p_phm_given_phi_bag "${subject_id}_p_phm_give
 # echo "Extracting: $p_um_given_a_bag"
 # python extract_topics_from_bag.py $p_um_given_a_bag "${subject_id}_p_um_given_a"
 
-# P(Ui|a) (internal_model)
-echo "Extracting: $p_phi_given_a_bag"
-python extract_topics_from_bag.py $p_phi_given_a_bag "${subject_id}_p_phi_given_a"
+# # P(Ui|a) (internal_model)
+# echo "Extracting: $p_phi_given_a_bag"
+# python extract_topics_from_bag.py $p_phi_given_a_bag "${subject_id}_p_phi_given_a"
 
 
 # Build distributions:

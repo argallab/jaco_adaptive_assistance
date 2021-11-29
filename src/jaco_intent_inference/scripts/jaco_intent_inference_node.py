@@ -218,7 +218,7 @@ class JacoIntentInference(object):
                 if np.linalg.norm(self.user_vel) > 0.01:
                     tau = 4
                 else:
-                    tau = 90
+                    tau = 100
 
                 h = 1.0 / self.NUM_GOALS
                 self.compute_current_input()

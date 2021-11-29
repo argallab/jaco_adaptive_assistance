@@ -141,6 +141,13 @@ class DiscreteMIDisambAlgo(object):
         )
         # # pick argmax among this list
         max_disamb_state = self._max_disambiguating_state()
+        max_disamb_state_m = list(max_disamb_state)
+        max_disamb_state_m[-1] = 1
+        print(" MODE 1", self.avg_total_reward_for_valid_states[tuple(max_disamb_state_m)])
+        max_disamb_state_m[-1] = 2
+        print(" MODE 2", self.avg_total_reward_for_valid_states[tuple(max_disamb_state_m)])
+        max_disamb_state_m[-1] = 3
+        print(" MODE 3", self.avg_total_reward_for_valid_states[tuple(max_disamb_state_m)])
         return max_disamb_state
 
     def _max_disambiguating_state(self):

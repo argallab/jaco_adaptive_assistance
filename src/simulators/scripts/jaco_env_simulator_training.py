@@ -4,6 +4,7 @@ import collections
 import threading
 import rospy
 import time
+import pickle
 from sensor_msgs.msg import Joy
 from envs.jaco_robot_SE3_env import JacoRobotSE3Env
 from disamb_algo.discrete_mi_disamb_algo import DiscreteMIDisambAlgo
@@ -43,8 +44,8 @@ from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
 
 GRID_WIDTH = 10
-GRID_DEPTH = 6
-GRID_HEIGHT = 6
+GRID_DEPTH = 8
+GRID_HEIGHT = 8
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
@@ -59,11 +60,7 @@ class Simulator(object):
         if self.scene == "1":
             self.num_objs = 4
         elif self.scene == "2":
-            self.num_objs = 3
-        elif self.scene == "3":
-            self.num_objs = 3
-        elif self.scene == "4":
-            self.num_objs = 4
+            self.num_objs = 2
 
         self.obj_positions = np.array([[0] * 3] * self.num_objs, dtype="f")
         self.obj_quats = np.array([[0] * 4] * self.num_objs, dtype="f")
@@ -90,6 +87,7 @@ class Simulator(object):
         self.input_action = {}
         self.input_action["full_control_signal"] = user_vel
         rospy.Subscriber("/user_vel", InterfaceSignal, self.joy_callback)
+        time.sleep(2)
 
         # alpha from confidence function parameters
         self.confidence_threshold = 1.1 / len(self.obj_positions)
@@ -157,21 +155,42 @@ class Simulator(object):
         self.world_bounds["yrange"]["ub"] = 0.0
         self.world_bounds["zrange"]["ub"] = 0.6
 
-        self.env_params["world_bounds"] = self.world_bounds
+        self.trial_info_dir_path = os.path.join(os.path.dirname(__file__), "trial_folders", "trial_dir")
+        self.scene_info_path = os.path.join(self.trial_info_dir_path, str(self.scene) + ".pkl")
 
-        mdp_env_params = self._create_mdp_env_param_dict()
-        self.env_params["all_mdp_env_params"] = mdp_env_params
-        mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
-        self.env_params["mdp_list"] = mdp_list
-        self.env_params["start_mode"] = start_mode  # or maybe from all 6D
-        self.env_params["num_goals"] = len(self.obj_positions)
-        # disamb algo specific params
-        self.env_params["spatial_window_half_length"] = 3  # number of cells
+        if not os.path.exists(self.scene_info_path):
+
+            self.env_params["world_bounds"] = self.world_bounds
+
+            mdp_env_params = self._create_mdp_env_param_dict()
+
+            self.env_params["all_mdp_env_params"] = mdp_env_params
+            mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
+            self.env_params["mdp_list"] = mdp_list
+
+            self.env_params["goal_positions"] = self.obj_positions
+            self.env_params["goal_quats"] = self.obj_quats
+            self.env_params["num_goals"] = len(self.obj_positions)
+            # disamb algo specific params
+            self.env_params["spatial_window_half_length"] = 2  # number of cells
+
+            self.env_params["robot_type"] = CartesianRobotType.SE3
+            # kl_coeff, num_modes,
+            self.env_params["kl_coeff"] = 0.6
+            self.env_params["dist_coeff"] = 0.4
+
+            with open(self.scene_info_path, "wb") as fp:
+                pickle.dump(self.env_params, fp)
+
+        else:
+            with open(self.scene_info_path, "rb") as fp:
+                self.env_params = pickle.load(fp)
+
+            mdp_env_params = self.env_params["all_mdp_env_params"]
+            mdp_list = self.env_params["mdp_list"]
+
         self.blend_mode = blend_mode
-        self.env_params["robot_type"] = CartesianRobotType.SE3
-        # kl_coeff, num_modes,
-        self.env_params["kl_coeff"] = 0.6
-        self.env_params["dist_coeff"] = 0.4
+        self.env_params["start_mode"] = start_mode  # or maybe from all 6D
 
         self._init_goal_pfields()
 
@@ -179,10 +198,8 @@ class Simulator(object):
         # self.env.initialize()
         self.env.reset()
 
-        # map from x,y,z,.... to 1,2,3,...
-        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][
-            self.env_params["start_mode"]
-        ]  # dimensions
+        # map from x,y,z,.... to 1,2,3,...# dimensions
+        starting_dimension = CARTESIAN_DIM_TO_CTRL_INDEX_MAP[CartesianRobotType.SE3][self.env_params["start_mode"]]
         mode_for_starting_dimension = CARTESIAN_DIM_TO_MODE_MAP[CartesianRobotType.SE3][ModeSetType.OneD][
             starting_dimension
         ]
@@ -418,6 +435,15 @@ class Simulator(object):
             self.uh_arrowpub.publish(self.uh_arrow)
 
             r.sleep()
+
+    def _zero_out_blend_vel(self):
+        for i in range(self.robot_dim):
+            self.blend_vel.velocity.data[i] = 0.0
+
+        # zero gripper velocity
+        self.blend_vel.velocity.data[6] = 0.0
+        self.blend_vel.velocity.data[7] = 0.0
+        self.blend_vel.velocity.data[8] = 0.0
 
     def _publishblend(self, period):
         while not rospy.is_shutdown():
@@ -740,29 +766,29 @@ class Simulator(object):
             self.obj_quats[3][2] = -0.029
             self.obj_quats[3][3] = 0.708
         elif self.scene == "2":
-            self.obj_positions[0][0] = 0.414  # custom left otp
-            self.obj_positions[0][1] = -0.406
-            self.obj_positions[0][2] = 0.2
-            self.obj_quats[0][0] = 0.706
-            self.obj_quats[0][1] = -0.016
-            self.obj_quats[0][2] = -0.029
-            self.obj_quats[0][3] = 0.708
+            self.obj_positions[0][0] = 0.306  # custom left otp
+            self.obj_positions[0][1] = -0.481
+            self.obj_positions[0][2] = 0.148
+            self.obj_quats[0][0] = 0.693
+            self.obj_quats[0][1] = 0.153
+            self.obj_quats[0][2] = 0.272
+            self.obj_quats[0][3] = 0.650
 
-            self.obj_positions[1][0] = 0.0  # custom left otp
-            self.obj_positions[1][1] = -0.406
-            self.obj_positions[1][2] = 0.2
-            self.obj_quats[1][0] = 0.706
-            self.obj_quats[1][1] = -0.016
-            self.obj_quats[1][2] = -0.029
-            self.obj_quats[1][3] = 0.708
+            # self.obj_positions[1][0] = 0.0  # custom left otp
+            # self.obj_positions[1][1] = -0.406
+            # self.obj_positions[1][2] = 0.2
+            # self.obj_quats[1][0] = 0.706
+            # self.obj_quats[1][1] = -0.016
+            # self.obj_quats[1][2] = -0.029
+            # self.obj_quats[1][3] = 0.708
 
-            self.obj_positions[2][0] = -0.514  # custom left otp
-            self.obj_positions[2][1] = -0.406
-            self.obj_positions[2][2] = 0.2
-            self.obj_quats[2][0] = 0.706
-            self.obj_quats[2][1] = -0.016
-            self.obj_quats[2][2] = -0.029
-            self.obj_quats[2][3] = 0.708
+            self.obj_positions[1][0] = -0.397  # custom left otp
+            self.obj_positions[1][1] = -0.524
+            self.obj_positions[1][2] = 0.148
+            self.obj_quats[1][0] = 0.644
+            self.obj_quats[1][1] = -0.358
+            self.obj_quats[1][2] = -0.206
+            self.obj_quats[1][3] = 0.644
         elif self.scene == "3":
             self.obj_positions[0][0] = 0.1  # custom left otp
             self.obj_positions[0][1] = -0.406
@@ -1031,6 +1057,7 @@ class Simulator(object):
     def shutdown_hook(self, msg_string="DONE"):
         if not self.called_shutdown:
             self.called_shutdown = True
+            self._zero_out_blend_vel()
             self.shutdown_pub.publish("shutdown")
             print("Shutting down")
 

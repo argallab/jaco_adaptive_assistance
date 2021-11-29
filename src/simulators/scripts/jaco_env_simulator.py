@@ -29,7 +29,9 @@
 
 import collections
 import rospy
+import pickle
 import threading
+import os
 import random
 import time
 from sensor_msgs.msg import Joy
@@ -71,8 +73,8 @@ from mdp.mdp_utils import *
 from jaco_adaptive_assistance_utils import *
 
 GRID_WIDTH = 10
-GRID_DEPTH = 10
-GRID_HEIGHT = 10
+GRID_DEPTH = 8
+GRID_HEIGHT = 8
 
 SPARSITY_FACTOR = 0.0
 RAND_DIRECTION_FACTOR = 0.1
@@ -96,6 +98,8 @@ class Simulator(object):
         elif self.scene == "4":
             self.num_objs = 4
         elif self.scene == "5":
+            self.num_objs = 4
+        elif self.scene == "6":
             self.num_objs = 4
 
         self.obj_positions = np.array([[0] * 3] * self.num_objs, dtype="f")
@@ -123,6 +127,8 @@ class Simulator(object):
         self.input_action = {}
         self.input_action["full_control_signal"] = user_vel
         rospy.Subscriber("/user_vel", InterfaceSignal, self.joy_callback)
+
+        time.sleep(2)
 
         # alpha from confidence function parameters
         self.confidence_threshold = 1.1 / len(self.obj_positions)
@@ -192,25 +198,42 @@ class Simulator(object):
         self.world_bounds["yrange"]["ub"] = 0.0
         self.world_bounds["zrange"]["ub"] = 0.6
 
-        self.env_params["world_bounds"] = self.world_bounds
+        self.trial_info_dir_path = os.path.join(os.path.dirname(__file__), "trial_folders", "trial_dir")
+        self.scene_info_path = os.path.join(self.trial_info_dir_path, str(self.scene) + ".pkl")
 
-        mdp_env_params = self._create_mdp_env_param_dict()
+        if not os.path.exists(self.scene_info_path):
 
-        self.env_params["all_mdp_env_params"] = mdp_env_params
-        mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
-        self.env_params["mdp_list"] = mdp_list
-        self.env_params["start_mode"] = start_mode  # or maybe from all 6D
-        self.env_params["goal_positions"] = self.obj_positions
-        self.env_params["goal_quats"] = self.obj_quats
-        self.env_params["num_goals"] = len(self.obj_positions)
-        # disamb algo specific params
-        self.env_params["spatial_window_half_length"] = 2  # number of cells
+            self.env_params["world_bounds"] = self.world_bounds
+
+            mdp_env_params = self._create_mdp_env_param_dict()
+
+            self.env_params["all_mdp_env_params"] = mdp_env_params
+            mdp_list = self._create_mdp_list(self.env_params["all_mdp_env_params"])
+            self.env_params["mdp_list"] = mdp_list
+
+            self.env_params["goal_positions"] = self.obj_positions
+            self.env_params["goal_quats"] = self.obj_quats
+            self.env_params["num_goals"] = len(self.obj_positions)
+            # disamb algo specific params
+            self.env_params["spatial_window_half_length"] = 2  # number of cells
+
+            self.env_params["robot_type"] = CartesianRobotType.SE3
+            # kl_coeff, num_modes,
+            self.env_params["kl_coeff"] = 0.6
+            self.env_params["dist_coeff"] = 0.4
+
+            with open(self.scene_info_path, "wb") as fp:
+                pickle.dump(self.env_params, fp)
+
+        else:
+            with open(self.scene_info_path, "rb") as fp:
+                self.env_params = pickle.load(fp)
+
+            mdp_env_params = self.env_params["all_mdp_env_params"]
+            mdp_list = self.env_params["mdp_list"]
+
         self.algo_condition = algo_condition
-        self.env_params["robot_type"] = CartesianRobotType.SE3
-        # kl_coeff, num_modes,
-        self.env_params["kl_coeff"] = 0.6
-        self.env_params["dist_coeff"] = 0.4
-
+        self.env_params["start_mode"] = start_mode  # or maybe from all 6D
         self.all_Rs = [
             mdp_env_params["cell_size"]["x"],
             mdp_env_params["cell_size"]["y"],
@@ -258,6 +281,7 @@ class Simulator(object):
             starting_dimension
         ]
         self.mode_msg.data = mode_for_starting_dimension
+        self.modepub.publish(self.mode_msg)
         # setup all services
         rospy.loginfo("Waiting for jaco_intent inference node")
         rospy.wait_for_service("/jaco_intent_inference/init_belief")
@@ -586,7 +610,7 @@ class Simulator(object):
 
                 # end condition check
                 for g_position, g_quat in zip(self.obj_positions, self.obj_quats):
-                    if np.linalg.norm(g_position - robot_position) < 0.07:
+                    if np.linalg.norm(g_position - robot_position) < 0.06:
                         diff_quat = tfs.quaternion_multiply(tfs.quaternion_inverse(robot_orientation), g_quat)
                         diff_quat = diff_quat / np.linalg.norm(diff_quat)  # normalize
                         theta_to_goal = 2 * math.acos(diff_quat[3])  # 0 to 2pi. only rotation in one direction.
@@ -595,7 +619,7 @@ class Simulator(object):
                             theta_to_goal = abs(theta_to_goal)
                             diff_quat = -diff_quat
 
-                        if abs(theta_to_goal) < 0.08 and self.has_human_initiated:
+                        if abs(theta_to_goal) < 0.06 and self.has_human_initiated:
                             is_done = True
                             break
             else:
@@ -1150,7 +1174,7 @@ class Simulator(object):
             self.obj_quats[2][2] = -0.029
             self.obj_quats[2][3] = 0.708
         elif self.scene == "3":
-            # 3 object
+            # 4 object  - simple
             self.obj_positions[0][0] = 0.497  # custom left otp
             self.obj_positions[0][1] = -0.468
             self.obj_positions[0][2] = 0.253
@@ -1177,39 +1201,39 @@ class Simulator(object):
         elif self.scene == "4":
             # 4 object, 2 on left 2 on right
             # 4 goals
-            self.obj_positions[0][0] = 0.561  # custom left otp
-            self.obj_positions[0][1] = -0.262
-            self.obj_positions[0][2] = 0.265
-            self.obj_quats[0][0] = 0.708
-            self.obj_quats[0][1] = 0.217
-            self.obj_quats[0][2] = 0.339
-            self.obj_quats[0][3] = 0.580
+            self.obj_positions[0][0] = 0.469  # left flat closer
+            self.obj_positions[0][1] = -0.220
+            self.obj_positions[0][2] = 0.231
+            self.obj_quats[0][0] = 0.641
+            self.obj_quats[0][1] = 0.308
+            self.obj_quats[0][2] = 0.323
+            self.obj_quats[0][3] = 0.624
 
-            self.obj_positions[1][0] = 0.396  # custom left otp
-            self.obj_positions[1][1] = -0.490
-            self.obj_positions[1][2] = 0.135
-            self.obj_quats[1][0] = 0.998
-            self.obj_quats[1][1] = 0.013
-            self.obj_quats[1][2] = 0.058
-            self.obj_quats[1][3] = -0.002
+            self.obj_positions[1][0] = 0.286  # left flat cup ahead
+            self.obj_positions[1][1] = -0.584
+            self.obj_positions[1][2] = 0.231
+            self.obj_quats[1][0] = 0.713
+            self.obj_quats[1][1] = -0.030
+            self.obj_quats[1][2] = 0.137
+            self.obj_quats[1][3] = 0.687
 
-            self.obj_positions[2][0] = -0.391  # custom left otp
-            self.obj_positions[2][1] = -0.574
-            self.obj_positions[2][2] = 0.072
-            self.obj_quats[2][0] = 0.644
-            self.obj_quats[2][1] = -0.358
-            self.obj_quats[2][2] = -0.206
-            self.obj_quats[2][3] = 0.644
+            self.obj_positions[2][0] = -0.390  # right flat cup ahead
+            self.obj_positions[2][1] = -0.540
+            self.obj_positions[2][2] = 0.167
+            self.obj_quats[2][0] = 0.725
+            self.obj_quats[2][1] = -0.227
+            self.obj_quats[2][2] = -0.116
+            self.obj_quats[2][3] = 0.640
 
-            self.obj_positions[3][0] = -0.330  # custom left otp
-            self.obj_positions[3][1] = -0.570
-            self.obj_positions[3][2] = 0.502
-            self.obj_quats[3][0] = -0.644
-            self.obj_quats[3][1] = -0.278
-            self.obj_quats[3][2] = 0.673
-            self.obj_quats[3][3] = -0.236
+            self.obj_positions[3][0] = -0.390  # right otp closer
+            self.obj_positions[3][1] = -0.172
+            self.obj_positions[3][2] = 0.112
+            self.obj_quats[3][0] = 0.992
+            self.obj_quats[3][1] = 0.027
+            self.obj_quats[3][2] = -0.124
+            self.obj_quats[3][3] = 0.002
         elif self.scene == "5":
-            self.obj_positions[0][0] = 0.382  # custom left otp
+            self.obj_positions[0][0] = 0.382  # crubiks
             self.obj_positions[0][1] = -0.122
             self.obj_positions[0][2] = 0.072
             self.obj_quats[0][0] = 0.991
@@ -1217,7 +1241,7 @@ class Simulator(object):
             self.obj_quats[0][2] = 0.080
             self.obj_quats[0][3] = -0.059
 
-            self.obj_positions[1][0] = 0.344  # custom left otp
+            self.obj_positions[1][0] = 0.344  # chips ahoy flat
             self.obj_positions[1][1] = -0.525
             self.obj_positions[1][2] = 0.072
             self.obj_quats[1][0] = 0.990
@@ -1225,21 +1249,54 @@ class Simulator(object):
             self.obj_quats[1][2] = 0.082
             self.obj_quats[1][3] = -0.051
 
-            self.obj_positions[2][0] = -0.391  # custom left otp
-            self.obj_positions[2][1] = -0.574
+            self.obj_positions[2][0] = -0.391  # cup bottom
+            self.obj_positions[2][1] = -0.524
             self.obj_positions[2][2] = 0.072
             self.obj_quats[2][0] = 0.644
             self.obj_quats[2][1] = -0.358
             self.obj_quats[2][2] = -0.206
             self.obj_quats[2][3] = 0.644
 
-            self.obj_positions[3][0] = -0.330  # custom left otp
-            self.obj_positions[3][1] = -0.570
+            self.obj_positions[3][0] = -0.330  # plate top
+            self.obj_positions[3][1] = -0.520
             self.obj_positions[3][2] = 0.502
             self.obj_quats[3][0] = -0.644
             self.obj_quats[3][1] = -0.278
             self.obj_quats[3][2] = 0.673
             self.obj_quats[3][3] = -0.236
+
+        elif self.scene == "6":
+            self.obj_positions[0][0] = 0.382  # crubiks
+            self.obj_positions[0][1] = -0.122
+            self.obj_positions[0][2] = 0.072
+            self.obj_quats[0][0] = 0.991
+            self.obj_quats[0][1] = 0.086
+            self.obj_quats[0][2] = 0.080
+            self.obj_quats[0][3] = -0.059
+
+            self.obj_positions[1][0] = 0.306  # custom left otp
+            self.obj_positions[1][1] = -0.481
+            self.obj_positions[1][2] = 0.148
+            self.obj_quats[1][0] = 0.693
+            self.obj_quats[1][1] = 0.153
+            self.obj_quats[1][2] = 0.272
+            self.obj_quats[1][3] = 0.650
+
+            self.obj_positions[2][0] = -0.397  # custom left otp
+            self.obj_positions[2][1] = -0.524
+            self.obj_positions[2][2] = 0.148
+            self.obj_quats[2][0] = 0.644
+            self.obj_quats[2][1] = -0.358
+            self.obj_quats[2][2] = -0.206
+            self.obj_quats[2][3] = 0.644
+
+            self.obj_positions[3][0] = -0.390  # right otp closer
+            self.obj_positions[3][1] = -0.172
+            self.obj_positions[3][2] = 0.112
+            self.obj_quats[3][0] = 0.992
+            self.obj_quats[3][1] = 0.027
+            self.obj_quats[3][2] = -0.124
+            self.obj_quats[3][3] = 0.002
 
     def _create_mdp_list(self, mdp_env_params):
         mdp_list = []

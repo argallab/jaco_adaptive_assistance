@@ -14,7 +14,7 @@
   <!-- bag file name parameters -->
   <group if="$(arg save)">
     <include file="$(find simulators)/launch/record.launch">
-      <arg name="bag_prefix" value="$(arg subject_id)_$(arg blend_mode)_condition_$(arg scene)_scene_$(arg start_mode)_start_mode_$(arg trial_id)_adaptive_assistance"/>
+      <arg name="bag_prefix" value="$(arg subject_id)_$(arg blend_mode)_condition_$(arg scene)_scene_$(arg start_mode)_start_mode_$(arg trial_id)_trial_id_adaptive_assistance"/>
     </include>
   </group>
 

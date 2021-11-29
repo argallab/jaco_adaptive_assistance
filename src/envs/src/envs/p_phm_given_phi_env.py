@@ -7,7 +7,7 @@ import os
 import rospkg
 
 sys.path.append(os.path.join(rospkg.RosPack().get_path("simulators"), "scripts"))
-from adaptive_assistance_sim_utils import *
+from jaco_adaptive_assistance_utils import *
 
 
 class PPhmGivenPhiEnv(object):

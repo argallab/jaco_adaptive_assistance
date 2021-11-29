@@ -9,12 +9,14 @@
   <arg name="scene" default="2" doc="Unique string identifier for the scene"/>
   <arg name="start_mode" default="ROLL" doc="Unique string identifier for the start mode"/>
   <arg name="algo_condition" default="disamb" doc="Unique string identifier for the algo_condition"/>
+  <arg name="goal_id" default="1" doc="Unique string identifier for the goal"/>
+  <arg name="home" default="1" doc="Unique string identifier for the home"/>
   
   <!-- record bags -->
   <!-- bag file name parameters -->
   <group if="$(arg save)">
     <include file="$(find simulators)/launch/record.launch">
-      <arg name="bag_prefix" value="$(arg subject_id)_$(arg algo_condition)_condition_$(arg scene)_scene_$(arg start_mode)_start_mode_$(arg trial_id)_adaptive_assistance"/>
+      <arg name="bag_prefix" value="$(arg subject_id)_$(arg algo_condition)_condition_$(arg scene)_scene_$(arg start_mode)_start_mode_$(arg goal_id)_goal_id_$(arg home)_home_$(arg trial_id)_trial_id_adaptive_assistance"/>
     </include>
   </group>
 

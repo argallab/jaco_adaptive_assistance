@@ -40,18 +40,16 @@ class PPhiGivenASim(object):
                 "c1_down",
                 "c2_down",
             ]
-            # self.training = [
-            #     "hard_puff_training_trans",
-            #     "hard_sip_training_trans",
-            #     "soft_puff_training_trans",
-            #     "soft_sip_training_trans",
-            # ]
             self.training = [
-                "hard_puff_training",
-                "hard_sip_training",
-                "soft_puff_training",
-                "soft_sip_training",
+                "soft_puff_training_trans",
+                "soft_sip_training_trans",
             ]
+            # self.training = [
+            #     "hard_puff_training",
+            #     "hard_sip_training",
+            #     "soft_puff_training",
+            #     "soft_sip_training",
+            # ]
 
         elif training_mode == "rot":
             self.actions = [
@@ -69,8 +67,6 @@ class PPhiGivenASim(object):
                 "c2_rotate_right",
             ]
             self.training = [
-                "hard_puff_training_rot",
-                "hard_sip_training_rot",
                 "soft_puff_training_rot",
                 "soft_sip_training_rot",
             ]
@@ -89,18 +85,16 @@ class PPhiGivenASim(object):
                 "mode_switch_left_5",
                 "mode_switch_left_6",
             ]
-            # self.training = [
-            #     "hard_puff_training_modes",
-            #     "hard_sip_training_modes",
-            #     "soft_puff_training_modes",
-            #     "soft_sip_training_modes",
-            # ]
             self.training = [
-                "hard_puff_training",
-                "hard_sip_training",
-                "soft_puff_training",
-                "soft_sip_training",
+                "hard_puff_training_modes",
+                "hard_sip_training_modes",
             ]
+            # self.training = [
+            #     "hard_puff_training",
+            #     "hard_sip_training",
+            #     "soft_puff_training",
+            #     "soft_sip_training",
+            # ]
 
         env_params = dict()
         env_params["file_dir"] = file_dir
