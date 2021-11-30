@@ -28,6 +28,7 @@
 /trial_marker
 /trial_index
 /shutdown
+/turn_signal
 /robot_state
 /disamb_discrete_state
 /autonomy_turn_target

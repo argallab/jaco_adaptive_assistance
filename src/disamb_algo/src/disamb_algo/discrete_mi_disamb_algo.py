@@ -6,8 +6,10 @@ import collections
 import os
 import pickle
 from scipy import special
+from scipy.spatial import KDTree
 from scipy.stats import entropy
 import itertools
+from itertools import combinations_with_replacement
 import sys
 import rospkg
 
@@ -59,8 +61,18 @@ class DiscreteMIDisambAlgo(object):
         self.kl_coeff = self.env_params.get("kl_coeff", 0.8)
         self.dist_coeff = self.env_params.get("dist_coeff", 0.2)
         self.kl_coeff = 1.0
-        self.dist_coeff = 1.0
+        self.dist_coeff = 0.3
         print(self.kl_coeff, self.dist_coeff)
+
+        self.n_probability_bins = self.num_goals * 2
+        self.bin_size = 1.0 / self.n_probability_bins
+        self.pbins = np.linspace(self.bin_size / 2, 1 - self.bin_size / 2, self.n_probability_bins)
+        self.discretization = np.linspace(0, 1, self.n_probability_bins + 1)
+
+        self.belief_grid_points = self._gen_belief_grid()
+        print(self.belief_grid_points)
+
+        self.belief_kd_tree = KDTree(self.belief_grid_points)
 
         inference_engine_dir = os.path.abspath(
             os.path.join(os.path.dirname(os.path.dirname(__file__)), os.pardir, os.pardir, "jaco_intent_inference")
@@ -68,9 +80,6 @@ class DiscreteMIDisambAlgo(object):
         self.distribution_directory_path = os.path.join(inference_engine_dir, "personalized_distributions")
         assert os.path.exists(self.distribution_directory_path)
 
-        # self.distribution_directory_path = os.path.join(
-        #     os.path.dirname(os.path.dirname(__file__)), "se2_personalized_distributions"
-        # )
         # unify the initialization of these distribution between different classes
         # init all distributions from file
         if os.path.exists(os.path.join(self.distribution_directory_path, str(self.subject_id) + "_p_phi_given_a.pkl")):
@@ -97,6 +106,30 @@ class DiscreteMIDisambAlgo(object):
 
         print("Finished initializing DISAMB CLASS")
 
+    def _gen_belief_grid(self):
+        belief_grid_points = []
+        for divs in combinations_with_replacement(range(self.n_probability_bins + 1), r=self.num_goals - 1):
+            b = (
+                [
+                    0,
+                ]
+                + list(divs)
+                + [
+                    self.n_probability_bins,
+                ]
+            )
+            b = np.ediff1d(b)
+            b = b / float(np.sum(b))
+            belief_grid_points.append(tuple(b))
+
+        return np.array(belief_grid_points)
+
+    def discretize_prior(self, p):
+        closest_discrete_belief_index = self.belief_kd_tree.query(p)[1]
+        print(closest_discrete_belief_index)
+        discrete_belief = self.belief_kd_tree.data[closest_discrete_belief_index, :]
+        return discrete_belief
+
     def get_local_disamb_state(self, prior, current_state, robot_position, robot_orientation):
         # compute window around current_state
         # prior = [0.48, 0.48, 0.02]
@@ -108,9 +141,19 @@ class DiscreteMIDisambAlgo(object):
         # print(states_in_local_spatial_window)
         # print(len(states_in_local_spatial_window))
         # # perform mi computation for all states in spatial window
-        self._compute_mi(prior, states_in_local_spatial_window, continuous_positions_of_local_spatial_window)
+        discretized_prior = self.discretize_prior(prior)
+        self._compute_mi(
+            prior, discretized_prior, states_in_local_spatial_window, continuous_positions_of_local_spatial_window
+        )
         # # pick argmax among this list
         max_disamb_state = self._max_disambiguating_state()
+        max_disamb_state_m = list(max_disamb_state)
+        max_disamb_state_m[-1] = 1
+        print(" MODE 1", self.avg_total_reward_for_valid_states[tuple(max_disamb_state_m)])
+        max_disamb_state_m[-1] = 2
+        print(" MODE 2", self.avg_total_reward_for_valid_states[tuple(max_disamb_state_m)])
+        max_disamb_state_m[-1] = 3
+        print(" MODE 3", self.avg_total_reward_for_valid_states[tuple(max_disamb_state_m)])
         return max_disamb_state
 
     def _max_disambiguating_state(self):
@@ -127,7 +170,11 @@ class DiscreteMIDisambAlgo(object):
         return max_disamb_state
 
     def _compute_mi(
-        self, prior, states_for_disamb_computation=None, continuous_positions_of_local_spatial_window=None
+        self,
+        prior,
+        discretized_prior,
+        states_for_disamb_computation=None,
+        continuous_positions_of_local_spatial_window=None,
     ):
         self.avg_mi_for_valid_states = collections.OrderedDict()
         self.avg_dist_for_valid_states_from_goals = collections.OrderedDict()
@@ -137,7 +184,7 @@ class DiscreteMIDisambAlgo(object):
         assert len(prior) == self.num_goals
         prior = prior / np.sum(prior)  # normalizing to make sure random choice works #todo maybe add some minor noise
         weighted_mean_position_of_all_goals = np.average(np.array(self.goal_positions), axis=0, weights=prior)
-        print("WEIGHTED MEAN ", prior, weighted_mean_position_of_all_goals, self.goal_positions)
+        print("WEIGHTED MEAN ", prior, discretized_prior, weighted_mean_position_of_all_goals, self.goal_positions)
 
         for i, (vs, vs_continuous) in enumerate(
             zip(states_for_disamb_computation, continuous_positions_of_local_spatial_window)
@@ -146,7 +193,7 @@ class DiscreteMIDisambAlgo(object):
             traj_list = collections.defaultdict(list)
             vs_mode = vs[-1]
             for t in range(self.num_sample_trajectories):
-                sampled_goal_index = np.random.choice(self.num_goals, p=prior)
+                sampled_goal_index = np.random.choice(self.num_goals, p=discretized_prior)
                 mdp_for_sampled_goal = self.mdp_list[sampled_goal_index]
                 # sub optimal a_sampled
                 a_sampled = mdp_for_sampled_goal.get_optimal_action(vs, return_optimal=False)

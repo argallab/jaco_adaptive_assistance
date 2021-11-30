@@ -201,7 +201,9 @@ class MDPDiscrete3DGridWorldWithModes(DiscreteMDP):
         # deal with movement type actions
         if task_level_action == "move_p" or task_level_action == "move_n":
             action_val = self.ACTION_VALS[task_level_action]  # increment of decrement in the mode that allow movement
-            action_vector[state_coord[Dim.Mode3D.value] - 1] = action_val  # -1 in index because 1,2,3 are the mode values
+            action_vector[
+                state_coord[Dim.Mode3D.value] - 1
+            ] = action_val  # -1 in index because 1,2,3 are the mode values
         elif task_level_action == "to_mode_r" or task_level_action == "to_mode_l":  # mode switch action
             action_val = self.ACTION_VALS[task_level_action]
             action_vector[-1] = action_val  # [0,0,0,-1/+1] -1 in the because mode is the LAST dimension
@@ -218,9 +220,9 @@ class MDPDiscrete3DGridWorldWithModes(DiscreteMDP):
             target_mode = current_mode + mode_change_action
             # wrap around mode
             if target_mode == 0:
-                target_mode = Dim.Mode3D.value
-            if target_mode == Dim.Mode3D.value + 1:
                 target_mode = 1
+            if target_mode == Dim.Mode3D.value + 1:
+                target_mode = Dim.Mode3D.value
 
             mode_switch_command = "to" + str(target_mode)
 

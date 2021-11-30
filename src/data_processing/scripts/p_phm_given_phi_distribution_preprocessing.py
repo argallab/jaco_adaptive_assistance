@@ -125,7 +125,7 @@ def _init_p_um_given_ui(commands, keys, subject_id):
 		for index, name in enumerate(keys):
 			p_um[i][name] = commands[i][index]
 	# embed(banner1="u_m")
-	personalized_distributions_dir = os.path.join(rospkg.RosPack().get_path('inference_engine'), 'personalized_distributions')
+	personalized_distributions_dir = os.path.join(rospkg.RosPack().get_path('jaco_intent_inference'), 'personalized_distributions')
 	print(p_um)
 	pickle.dump(p_um, open(os.path.join(personalized_distributions_dir, subject_id +'_p_phm_given_phi.pkl'), "wb"))
 
