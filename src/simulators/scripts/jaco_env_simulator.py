@@ -238,32 +238,44 @@ class Simulator(object):
             mdp_env_params["cell_size"]["x"],
             mdp_env_params["cell_size"]["y"],
             mdp_env_params["cell_size"]["z"],
-            2 * mdp_env_params["cell_size"]["x"],
-            2 * mdp_env_params["cell_size"]["y"],
-            2 * mdp_env_params["cell_size"]["z"],
             np.linalg.norm([mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"]]),
             np.linalg.norm([mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]),
             np.linalg.norm([mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["z"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], 2 * mdp_env_params["cell_size"]["y"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], 2 * mdp_env_params["cell_size"]["z"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], 2 * mdp_env_params["cell_size"]["z"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["z"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["x"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["z"], mdp_env_params["cell_size"]["x"]]),
-            np.linalg.norm([2 * mdp_env_params["cell_size"]["z"], mdp_env_params["cell_size"]["y"]]),
             np.linalg.norm(
                 [mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]
             ),
-            np.linalg.norm(
-                [
-                    2 * mdp_env_params["cell_size"]["x"],
-                    2 * mdp_env_params["cell_size"]["y"],
-                    2 * mdp_env_params["cell_size"]["z"],
-                ]
-            ),
         ]
+        # ]
+        # self.all_Rs = [
+        #     mdp_env_params["cell_size"]["x"],
+        #     mdp_env_params["cell_size"]["y"],
+        #     mdp_env_params["cell_size"]["z"],
+        #     2 * mdp_env_params["cell_size"]["x"],
+        #     2 * mdp_env_params["cell_size"]["y"],
+        #     2 * mdp_env_params["cell_size"]["z"],
+        #     np.linalg.norm([mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"]]),
+        #     np.linalg.norm([mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]),
+        #     np.linalg.norm([mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["z"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], 2 * mdp_env_params["cell_size"]["y"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], 2 * mdp_env_params["cell_size"]["z"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], 2 * mdp_env_params["cell_size"]["z"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["z"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["x"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["z"], mdp_env_params["cell_size"]["x"]]),
+        #     np.linalg.norm([2 * mdp_env_params["cell_size"]["z"], mdp_env_params["cell_size"]["y"]]),
+        #     np.linalg.norm(
+        #         [mdp_env_params["cell_size"]["x"], mdp_env_params["cell_size"]["y"], mdp_env_params["cell_size"]["z"]]
+        #     ),
+        #     np.linalg.norm(
+        #         [
+        #             2 * mdp_env_params["cell_size"]["x"],
+        #             2 * mdp_env_params["cell_size"]["y"],
+        #             2 * mdp_env_params["cell_size"]["z"],
+        #         ]
+        #     ),
+        # ]
 
         self._init_goal_pfields()
         self._init_other_pfields(pfield_id="disamb")
@@ -1282,7 +1294,7 @@ class Simulator(object):
             self.obj_quats[1][2] = 0.272
             self.obj_quats[1][3] = 0.650
 
-            self.obj_positions[2][0] = -0.397  # custom left otp
+            self.obj_positions[2][0] = -0.397  # right cup
             self.obj_positions[2][1] = -0.524
             self.obj_positions[2][2] = 0.148
             self.obj_quats[2][0] = 0.644

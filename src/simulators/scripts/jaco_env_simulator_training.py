@@ -61,6 +61,8 @@ class Simulator(object):
             self.num_objs = 4
         elif self.scene == "2":
             self.num_objs = 2
+        elif self.scene == '6':
+            self.num_objs = 4
 
         self.obj_positions = np.array([[0] * 3] * self.num_objs, dtype="f")
         self.obj_quats = np.array([[0] * 4] * self.num_objs, dtype="f")
@@ -846,6 +848,38 @@ class Simulator(object):
             self.obj_quats[3][1] = -0.278
             self.obj_quats[3][2] = 0.673
             self.obj_quats[3][3] = -0.236
+        elif self.scene == "6":
+            self.obj_positions[0][0] = 0.382  # crubiks
+            self.obj_positions[0][1] = -0.122
+            self.obj_positions[0][2] = 0.072
+            self.obj_quats[0][0] = 0.991
+            self.obj_quats[0][1] = 0.086
+            self.obj_quats[0][2] = 0.080
+            self.obj_quats[0][3] = -0.059
+
+            self.obj_positions[1][0] = 0.306  # custom left otp
+            self.obj_positions[1][1] = -0.481
+            self.obj_positions[1][2] = 0.148
+            self.obj_quats[1][0] = 0.693
+            self.obj_quats[1][1] = 0.153
+            self.obj_quats[1][2] = 0.272
+            self.obj_quats[1][3] = 0.650
+
+            self.obj_positions[2][0] = -0.397  # right cup
+            self.obj_positions[2][1] = -0.524
+            self.obj_positions[2][2] = 0.148
+            self.obj_quats[2][0] = 0.644
+            self.obj_quats[2][1] = -0.358
+            self.obj_quats[2][2] = -0.206
+            self.obj_quats[2][3] = 0.644
+
+            self.obj_positions[3][0] = -0.390  # right otp closer
+            self.obj_positions[3][1] = -0.172
+            self.obj_positions[3][2] = 0.112
+            self.obj_quats[3][0] = 0.992
+            self.obj_quats[3][1] = 0.027
+            self.obj_quats[3][2] = -0.124
+            self.obj_quats[3][3] = 0.002
 
     def _create_mdp_list(self, mdp_env_params):
         mdp_list = []
