@@ -110,7 +110,13 @@ class DiscreteMIDisambAlgo(object):
         belief_grid_points = []
         for divs in combinations_with_replacement(range(self.n_probability_bins + 1), r=self.num_goals - 1):
             b = (
-                [0,] + list(divs) + [self.n_probability_bins,]
+                [
+                    0,
+                ]
+                + list(divs)
+                + [
+                    self.n_probability_bins,
+                ]
             )
             b = np.ediff1d(b)
             b = b / float(np.sum(b))
