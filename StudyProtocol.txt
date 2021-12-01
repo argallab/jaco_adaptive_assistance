@@ -1,5 +1,5 @@
-1. export $DISPLAY=":1" in all docker terminals. 
-
+1. export DISPLAY=":1" in all docker terminals. 
+2. roslaunch jaco_interaction jaco_base.launch
 
 USEFUL SERVICES in Terminal 2:
 STOP FORCE CONTROL - rosservice call /j2s7s300_driver/in/stop_force_control
@@ -15,10 +15,11 @@ phi given a
 Generate a random ordering of [0,1,2] to determine the order in which the follwoing three tests should be administered. 
 [0,2,1]
 
-0 - roslaunch simulators p_phi_given_a_sim.launch subject_id:=j02 save:=true iteration:=1 block:=4 training_mode:=trans
-1 - roslaunch simulators p_phi_given_a_sim.launch subject_id:=j02 save:=true iteration:=1 block:=4 training_mode:=rot
-2 - roslaunch simulators p_phi_given_a_sim.launch subject_id:=j02 save:=true iteration:=1 block:=4 training_mode:=modes
+0 - roslaunch simulators p_phi_given_a_sim.launch subject_id:=j02 save:=false iteration:=1 block:=4 training_mode:=trans
+1 - roslaunch simulators p_phi_given_a_sim.launch subject_id:=j02 save:=false iteration:=1 block:=4 training_mode:=rot
+2 - roslaunch simulators p_phi_given_a_sim.launch subject_id:=j02 save:=false iteration:=1 block:=4 training_mode:=modes
 
+cd src/data_processing/scripts
 python extract_topics_from_bag.py /root/.ros/j02transBAGFILE j02trans_p_phi_given_a
 python extract_topics_from_bag.py /root/.ros/j02modesBAGFILE j02modes_p_phi_given_a
 python p_phi_given_a_distribution_preprocessing.py -id j02
@@ -32,7 +33,7 @@ In rqt_reconfigure select prompted
 press 's' to start prompted training.
 
 Prompted testing
-roslaunch simulators p_phm_given_phi_sim.launch subject_id:=j02 save:=true
+roslaunch simulators p_phm_given_phi_sim.launch subject_id:=j02 save:=false
 cd src/data_processing/scripts ./generate_personalized_distributions_from_bags.sh j02
 
 RUN JACO_BASE
@@ -57,34 +58,41 @@ roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=f
 roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=6 start_mode:=X goal:=4 trial_id:=0
 
 
+
+TESTING 
+
+
+
 DISAMB (scene 5)
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=5 start_mode:=ROLL goal_id:=1 home:=2 trial_id:=0
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=5 start_mode:=Z goal_id:=2 home:=2 trial_id:=1
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=5 start_mode:=YAW goal_id:=1 home:=2 trial_id:=2
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=5 start_mode:=ROLL goal_id:=3 home:=1 trial_id:=3
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=5 start_mode:=YAW goal_id:=4 home:=1 trial_id:=4
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=5 start_mode:=Z goal_id:=2 home:=2 trial_id:=5
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=ROLL goal_id:=1 home:=2 trial_id:=0
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=Z goal_id:=2 home:=2 trial_id:=1
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=YAW goal_id:=1 home:=2 trial_id:=2
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=ROLL goal_id:=3 home:=1 trial_id:=3
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=YAW goal_id:=4 home:=1 trial_id:=4
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=Z goal_id:=2 home:=2 trial_id:=5
 
 CONTROL (scene 4)
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=4 start_mode:=X goal_id:=4 home:=1 trial_id:=0
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=4 start_mode:=Z goal_id:=2 home:=2 trial_id:=1
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=4 start_mode:=Y goal_id:=4 home:=1 trial_id:=2
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=4 start_mode:=PITCH goal:=2 home:=2 trial_id:=3
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=4 start_mode:=X goal_id:=2 home:=2 trial_id:=4
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=4 start_mode:=YAW goal_id:=3 home:=1 trial_id:=5
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=4 start_mode:=X goal_id:=4 home:=1 trial_id:=0
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=4 start_mode:=Z goal_id:=2 home:=2 trial_id:=1
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=4 start_mode:=Y goal_id:=4 home:=1 trial_id:=2
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=4 start_mode:=PITCH goal:=2 home:=2 trial_id:=3
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=4 start_mode:=X goal_id:=2 home:=2 trial_id:=4
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=4 start_mode:=YAW goal_id:=3 home:=1 trial_id:=5
 
 DISAMB (scene 4)
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=4 start_mode:=X goal_id:=2 home:=2 trial_id:=0
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=4 start_mode:=X goal_id:=4 home:=1 trial_id:=1
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=4 start_mode:=Y goal_id:=1 home:=2 trial_id:=2
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=4 start_mode:=Y goal_id:=4 home:=1 trial_id:=3
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=4 start_mode:=PITCH goal_id:=3 home:=1 trial_id:=4
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=true scene:=4 start_mode:=PITCH goal_id:=2 home:=2 trial_id:=5
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=4 start_mode:=X goal_id:=2 home:=2 trial_id:=0
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=4 start_mode:=X goal_id:=4 home:=1 trial_id:=1
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=4 start_mode:=Y goal_id:=1 home:=2 trial_id:=2
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=4 start_mode:=Y goal_id:=4 home:=1 trial_id:=3
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=4 start_mode:=PITCH goal_id:=3 home:=1 trial_id:=4
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=4 start_mode:=PITCH goal_id:=2 home:=2 trial_id:=5
 
 CONTROL (scene 5)
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=5 start_mode:=ROLL goal_id:=1 home:=2 trial_id:=0
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=5 start_mode:=Y goal_id:=1 home:=2 trial_id:=1
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=5 start_mode:=ROLL goal_id:=3 home:=1 trial_id:=2
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=5 start_mode:=YAW goal_id:=1 home:=2 trial_id:=3
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=5 start_mode:=Z goal_id:=3 home:=1 trial_id:=4
-roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=true scene:=5 start_mode:=PITCH goal_id:=4 home:=1 trial_id:=5
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=ROLL goal_id:=1 home:=2 trial_id:=0
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=Y goal_id:=1 home:=2 trial_id:=1
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=ROLL goal_id:=3 home:=1 trial_id:=2
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=YAW goal_id:=1 home:=2 trial_id:=3
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=Z goal_id:=3 home:=1 trial_id:=4
+roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=PITCH goal_id:=4 home:=1 trial_id:=5
+
+mount -t cifs //resfilesaudit.northwestern.edu/ARGALLAB -o domain=ads,username=awt1585,mfsymlinks /mnt/mountpoint
