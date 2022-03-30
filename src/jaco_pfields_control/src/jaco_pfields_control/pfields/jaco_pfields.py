@@ -130,7 +130,7 @@ class JacoPfields(object):
         pfield_vel[:3] = list(self.pfieldvel_array[:])
         pfield_vel[3:6] = list(self.pfieldrot_array[:])
 
-        return pfield_vel  # 8D list with gripper vel to be zero
+        return pfield_vel  # 9D list with gripper vel to be zero
 
     def update_attractor_vels(self):
         self.pfieldvel_array = (np.zeros((1, 3)))[0]  # might be unnecessary

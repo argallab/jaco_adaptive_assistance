@@ -1,6 +1,8 @@
 1. export DISPLAY=":1" in all docker terminals. 
 2. roslaunch jaco_interaction jaco_base.launch
 
+RUN JACO_BASE
+RUN STOP FORCE CONTROL
 USEFUL SERVICES in Terminal 2:
 STOP FORCE CONTROL - rosservice call /j2s7s300_driver/in/stop_force_control
 SET CONTROL MODE TRAJECTORY - rosservice call /j2s7s300_driver/in/set_control_mode "current_control_mode: 'trajectory'"
@@ -10,8 +12,9 @@ START SNP - rosservice call /snp_mapping/start_thread
 Qualtrics Training
 
 After qualtrics training
+phi given a training
+all bag files are in /root/.ros/
 
-phi given a
 Generate a random ordering of [0,1,2] to determine the order in which the follwoing three tests should be administered. 
 [0,2,1]
 
@@ -24,20 +27,21 @@ python extract_topics_from_bag.py /root/.ros/j02transBAGFILE j02trans_p_phi_give
 python extract_topics_from_bag.py /root/.ros/j02modesBAGFILE j02modes_p_phi_given_a
 python p_phi_given_a_distribution_preprocessing.py -id j02
 
+(modify the script to print out the saved dict containing the distributions)
+
 phm given phi
 a) Free exploration (with feedback)
-roslaunch simulators sip_puff_training_simulator.launch iteration:=5
-b) Prompted training (with feedback)
+roslaunch simulators sip_puff_training_simulator.launch iteration:=5 (in the 4th terminal run rostopic echo /joy_sip_puff)
+b) Prompted training (with feedback) (in the rqt_window) just select "prompted training" and then hit S in the pyget window
 roslaunch simulators sip_puff_training_simulator.launch iteration:=5
 In rqt_reconfigure select prompted
 press 's' to start prompted training.
 
 Prompted testing
-roslaunch simulators p_phm_given_phi_sim.launch subject_id:=j02 save:=false
-cd src/data_processing/scripts ./generate_personalized_distributions_from_bags.sh j02
+roslaunch simulators p_phm_given_phi_sim.launch subject_id:=j02 save:=true
+cd src/data_processing/scripts 
+./generate_personalized_distributions_from_bags.sh j02
 
-RUN JACO_BASE
-RUN STOP FORCE CONTROL
 
 training with just teleop
 roslaunch simulators jaco_training.launch subject_id:=j02 blend_mode:=teleop save:=false scene:=6 start_mode:=YAW trial_id:=0
@@ -57,11 +61,7 @@ roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=f
 roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=6 start_mode:=YAW goal:=2 trial_id:=0
 roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=6 start_mode:=X goal:=4 trial_id:=0
 
-
-
 TESTING 
-
-
 
 DISAMB (scene 5)
 roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=disamb save:=false scene:=5 start_mode:=ROLL goal_id:=1 home:=2 trial_id:=0
@@ -95,4 +95,5 @@ roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=f
 roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=Z goal_id:=3 home:=1 trial_id:=4
 roslaunch simulators jaco.launch subject_id:=j02 algo_condition:=control save:=false scene:=5 start_mode:=PITCH goal_id:=4 home:=1 trial_id:=5
 
+DATA STORAGE
 mount -t cifs //resfilesaudit.northwestern.edu/ARGALLAB -o domain=ads,username=awt1585,mfsymlinks /mnt/mountpoint
